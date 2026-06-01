@@ -6,6 +6,9 @@ import { MainMenu } from './screens/MainMenu.js';
 import { Preview } from './screens/Preview.js';
 import { ItemsEditor } from './screens/ItemsEditor.js';
 import { ColorMenu } from './screens/ColorMenu.js';
+import { LineSelector } from './screens/LineSelector.js';
+import { PowerlineSetup } from './screens/PowerlineSetup.js';
+import { SettingsScreen } from './screens/Settings.js';
 
 export interface AppProps {
   initialSettings: Settings;
@@ -34,6 +37,12 @@ export function App({ initialSettings, onSave, onExit }: AppProps) {
       return <ItemsEditor state={state} dispatch={dispatch} />;
     case 'color':
       return <ColorMenu state={state} dispatch={dispatch} />;
+    case 'lines':
+      return <LineSelector state={state} dispatch={dispatch} />;
+    case 'powerline':
+      return <PowerlineSetup state={state} dispatch={dispatch} />;
+    case 'settings':
+      return <SettingsScreen state={state} dispatch={dispatch} />;
     default:
       return <ComingSoon dispatch={dispatch} />;
   }
