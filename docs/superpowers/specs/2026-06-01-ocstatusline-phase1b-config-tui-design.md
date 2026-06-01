@@ -143,7 +143,7 @@ The preview pipes this straight through 1A's `renderLines`, so what the user see
 
 ## Stack & dependencies
 
-- Add runtime deps: `ink` (v5, ESM), `react` (v18). Dev: `@types/react`, `ink-testing-library`.
+- Add runtime deps: `ink` (v7, ESM — requires React 19 and Node ≥22; this project runs Node 24), `react` (v19). Dev: `@types/react` (v19), `ink-testing-library` (v4).
 - Keep TypeScript ESM + `.js` import specifiers, strict mode, Node + Bun (consistent with 1A). `.tsx` files compile under the existing tsconfig (add `"jsx": "react-jsx"`).
 - No new global config location; same `~/.config/ocstatusline/settings.json`.
 
