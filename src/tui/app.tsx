@@ -4,6 +4,8 @@ import { editorReducer, initialState, type EditorState, type Action } from './st
 import type { Settings } from '../types/index.js';
 import { MainMenu } from './screens/MainMenu.js';
 import { Preview } from './screens/Preview.js';
+import { ItemsEditor } from './screens/ItemsEditor.js';
+import { ColorMenu } from './screens/ColorMenu.js';
 
 export interface AppProps {
   initialSettings: Settings;
@@ -28,6 +30,10 @@ export function App({ initialSettings, onSave, onExit }: AppProps) {
       return <MainMenu state={state} dispatch={dispatch} onSave={() => onSave(state.settings)} onExit={onExit} />;
     case 'preview':
       return <Preview state={state} dispatch={dispatch} />;
+    case 'items':
+      return <ItemsEditor state={state} dispatch={dispatch} />;
+    case 'color':
+      return <ColorMenu state={state} dispatch={dispatch} />;
     default:
       return <ComingSoon dispatch={dispatch} />;
   }
