@@ -47,4 +47,10 @@ describe('reduce', () => {
     const s1 = reduce(s0, { type: 'weird.thing', properties: {} } as any);
     expect(s1.byMessage).toEqual({});
   });
+  it('leaves state unchanged for non-assistant message.updated', () => {
+    const s0 = reduce(emptyState(), assistantMsg('m1'));
+    const s1 = reduce(s0, { type: 'message.updated', properties: { info: { id: 'u1', role: 'user' } } } as any);
+    expect(s1).toBe(s0); // same reference: no allocation, no idle flip
+    expect(Object.keys(s1.byMessage)).toEqual(['m1']);
+  });
 });
