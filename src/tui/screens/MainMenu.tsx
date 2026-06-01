@@ -4,7 +4,6 @@ import type { EditorState, Action, Screen } from '../state.js';
 
 const MENU: { label: string; screen?: Screen; save?: boolean }[] = [
   { label: 'Edit line items', screen: 'items' },
-  { label: 'Colors', screen: 'items' },
   { label: 'Powerline setup', screen: 'powerline' },
   { label: 'Lines (add/remove)', screen: 'lines' },
   { label: 'Settings', screen: 'settings' },

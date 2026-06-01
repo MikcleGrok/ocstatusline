@@ -23,8 +23,9 @@ export function ItemsEditor({ state, dispatch }: { state: EditorState; dispatch:
     else if (input === 'a') { setAddIndex(0); setMode('add'); }
     else if (input === 'e' || key.return) {
       const w = line[state.itemIndex];
-      if (w && (w.type === 'custom-text' || w.type === 'custom-symbol')) setMode('text');
-      else dispatch({ t: 'nav', screen: 'color' });
+      if (!w) return; // empty line: nothing to edit
+      if (w.type === 'custom-text' || w.type === 'custom-symbol') setMode('text');
+      else dispatch({ t: 'nav', screen: 'color', keepItem: true });
     }
   });
 
