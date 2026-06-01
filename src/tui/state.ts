@@ -11,7 +11,7 @@ export interface EditorState {
 }
 
 export type Action =
-  | { t: 'nav'; screen: Screen }
+  | { t: 'nav'; screen: Screen; keepItem?: boolean }
   | { t: 'cursor'; delta: number; count: number }
   | { t: 'moveItem'; delta: number }
   | { t: 'addItem'; widgetType: string }
@@ -45,7 +45,7 @@ function patchWidget(s: EditorState, fn: (w: WidgetConfig) => WidgetConfig): Set
 export function editorReducer(s: EditorState, a: Action): EditorState {
   switch (a.t) {
     case 'nav':
-      return { ...s, screen: a.screen, itemIndex: 0 };
+      return { ...s, screen: a.screen, itemIndex: a.keepItem ? s.itemIndex : 0 };
     case 'cursor':
       return { ...s, itemIndex: clamp(s.itemIndex + a.delta, 0, Math.max(0, a.count - 1)) };
     case 'moveItem': {

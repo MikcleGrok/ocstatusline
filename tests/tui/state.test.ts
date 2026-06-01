@@ -116,6 +116,14 @@ describe('editorReducer', () => {
     expect(s.settings.refreshInterval).toBe(500);
     expect(s.settings.colorLevel).toBe('ansi16');
   });
+  it('nav resets itemIndex by default but preserves it with keepItem', () => {
+    const s = { ...initialState(twoLine()), itemIndex: 1 };
+    const reset = editorReducer(s, { t: 'nav', screen: 'items' });
+    expect(reset.itemIndex).toBe(0);
+    const kept = editorReducer(s, { t: 'nav', screen: 'color', keepItem: true });
+    expect(kept.itemIndex).toBe(1);
+    expect(kept.screen).toBe('color');
+  });
   it('does not mutate the input state object', () => {
     const s0 = initialState(twoLine());
     const before = JSON.stringify(s0);

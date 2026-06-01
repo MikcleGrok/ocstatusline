@@ -14,15 +14,15 @@ export function ColorMenu({ state, dispatch }: { state: EditorState; dispatch: (
 
   useInput((input, key) => {
     if (hexMode) return;
-    if (key.escape) dispatch({ t: 'nav', screen: 'items' });
+    if (key.escape) dispatch({ t: 'nav', screen: 'items', keepItem: true });
     else if (key.upArrow) setIndex(Math.max(0, index - 1));
     else if (key.downArrow) setIndex(Math.min(OPTIONS.length - 1, index + 1));
     else if (input === 'b') dispatch({ t: 'toggleBold' });
     else if (key.return) {
       const choice = OPTIONS[index];
-      if (choice === '(none)') { dispatch({ t: 'setColor', color: undefined }); dispatch({ t: 'nav', screen: 'items' }); }
+      if (choice === '(none)') { dispatch({ t: 'setColor', color: undefined }); dispatch({ t: 'nav', screen: 'items', keepItem: true }); }
       else if (choice === 'custom hex...') { setError(''); setHexMode(true); }
-      else { dispatch({ t: 'setColor', color: choice }); dispatch({ t: 'nav', screen: 'items' }); }
+      else { dispatch({ t: 'setColor', color: choice }); dispatch({ t: 'nav', screen: 'items', keepItem: true }); }
     }
   });
 
@@ -37,7 +37,7 @@ export function ColorMenu({ state, dispatch }: { state: EditorState; dispatch: (
           onSubmit={(v) => {
             if (/^#?[0-9a-fA-F]{6}$/.test(v)) {
               dispatch({ t: 'setColor', color: v.startsWith('#') ? v : '#' + v });
-              dispatch({ t: 'nav', screen: 'items' });
+              dispatch({ t: 'nav', screen: 'items', keepItem: true });
             } else { setError('invalid hex (expected #rrggbb)'); }
           }}
           onCancel={() => setHexMode(false)}
