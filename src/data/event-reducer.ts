@@ -5,7 +5,7 @@ export function reduce(state: OpencodeState, event: any): OpencodeState {
   const type: string = event?.type;
   if (type === 'message.updated') {
     const info = event.properties?.info;
-    if (!info || info.role !== 'assistant') return { ...state, idle: false, lastUpdate: Date.now() };
+    if (!info || info.role !== 'assistant') return state;
     const t = info.tokens ?? {};
     const cache = t.cache ?? {};
     const agg: MsgAgg = {

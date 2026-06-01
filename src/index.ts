@@ -5,6 +5,7 @@ import { derive } from './data/selectors.js';
 import { loadLimitLookup } from './data/models.js';
 import { getGitInfo } from './data/git.js';
 import { renderLines } from './render/renderer.js';
+import { repaint } from './render/ansi.js';
 import { loadSettings } from './utils/config.js';
 import { emptyState, type OpencodeState, type RenderContext } from './types/index.js';
 
@@ -13,6 +14,8 @@ function getArg(name: string): string | undefined {
   return i >= 0 && i < process.argv.length - 1 ? process.argv[i + 1] : undefined;
 }
 
+let prevLineCount = 0;
+
 function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, getLimit: ReturnType<typeof loadLimitLookup>) {
   const now = Date.now();
   const derived = derive(state, getLimit, now);
@@ -20,8 +23,8 @@ function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, 
   const termWidth = process.stdout.columns || 120;
   const ctx: RenderContext = { state, derived, git, termWidth, now };
   const lines = renderLines(ctx, settings);
-  // Repaint: move cursor to column 0, clear line(s), print.
-  process.stdout.write('\r\x1b[2K' + lines.join('\n'));
+  process.stdout.write(repaint(lines, prevLineCount));
+  prevLineCount = lines.length;
 }
 
 async function main() {
