@@ -8,9 +8,8 @@ async function main() {
     await runDaemon({ serverUrl: cmd.serverUrl });
     return;
   }
-  // TUI mode is wired in Task 8.
-  process.stderr.write('ocstatusline: config TUI not yet available; use "ocstatusline start"\n');
-  process.exit(1);
+  const { mountTui } = await import('./tui/run.js');
+  await mountTui();
 }
 
 main().catch((e) => { process.stderr.write(`ocstatusline: ${e?.message ?? e}\n`); process.exit(1); });
