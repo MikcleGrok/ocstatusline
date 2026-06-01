@@ -12,7 +12,7 @@ export function fmtDuration(ms: number): string {
   const sec = s % 60;
   if (m < 60) return `${m}m${String(sec).padStart(2, '0')}s`;
   const h = Math.floor(m / 60);
-  return `${h}h${String(m % 60).padStart(2, '00')}m`;
+  return `${h}h${String(m % 60).padStart(2, '0')}m`;
 }
 
 const widgets: Widget[] = [
