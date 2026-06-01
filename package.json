@@ -1,17 +1,46 @@
 {
   "name": "ocstatusline",
   "version": "0.1.0",
-  "description": "Highly customizable live status line for OpenCode",
+  "description": "Highly customizable live status line for OpenCode — the OpenCode counterpart of ccstatusline",
   "type": "module",
   "bin": {
     "ocstatusline": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "opencode",
+    "statusline",
+    "status-line",
+    "ccstatusline",
+    "tui",
+    "ink",
+    "cli",
+    "powerline",
+    "terminal"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amirlehmam/ocstatusline.git"
+  },
+  "homepage": "https://github.com/amirlehmam/ocstatusline#readme",
+  "bugs": {
+    "url": "https://github.com/amirlehmam/ocstatusline/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@opencode-ai/sdk": "^1.2.6",
