@@ -49,15 +49,29 @@ It reuses ~70% of ccstatusline's concepts (widget engine, Powerline, colors, fle
 
 ## Install
 
-> Not yet published to npm — install from source. (npm/`npx` distribution is on the roadmap.)
+Run it directly with no install:
+
+```bash
+npx ocstatusline          # open the config TUI
+npx ocstatusline start    # run the live daemon
+```
+
+Or install globally:
+
+```bash
+npm install -g ocstatusline
+ocstatusline               # config TUI
+ocstatusline start         # live daemon
+```
+
+### From source
 
 ```bash
 git clone https://github.com/amirlehmam/ocstatusline.git
 cd ocstatusline
 npm install
 npm run build
-# optional: make the `ocstatusline` command available globally
-npm link
+npm link                   # optional: expose the `ocstatusline` command
 ```
 
 If you skip `npm link`, run it with `node dist/index.js …` instead of `ocstatusline …`.
@@ -204,7 +218,7 @@ src/
 
 **Shipped:** the live daemon and full render/data core; the OpenCode-relevant widget set; Powerline, colors, flex-width, multi-line; and the interactive config TUI.
 
-**Planned (toward fuller ccstatusline parity):** npm/`npx` distribution, per-segment Powerline color transitions, thinking-effort and compaction widgets, a Custom Command widget, an advanced Powerline theme library, and an update checker.
+**Planned (toward fuller ccstatusline parity):** per-segment Powerline color transitions, thinking-effort and compaction widgets, a Custom Command widget, an advanced Powerline theme library, and an update checker.
 
 ---
 
