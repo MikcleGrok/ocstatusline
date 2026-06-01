@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "Highly customizable live status line for OpenCode",
   "type": "module",
-  "bin": { "ocstatusline": "dist/index.js" },
+  "bin": {
+    "ocstatusline": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -12,10 +14,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.2.6"
+    "@opencode-ai/sdk": "^1.2.6",
+    "ink": "^7.0.5",
+    "react": "^19.2.6"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
+    "@types/react": "^19.2.15",
+    "ink-testing-library": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.8.2",
     "vitest": "^2.1.9"
