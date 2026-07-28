@@ -1,6 +1,10 @@
 # ocstatusline
 
 > A highly customizable, **live** status line for [OpenCode](https://github.com/sst/opencode) — the OpenCode counterpart of [ccstatusline](https://github.com/sirmalloc/ccstatusline).
+>
+> **Fork of [amirlehmam/ocstatusline](https://github.com/amirlehmam/ocstatusline)** (MIT), which this fork keeps in sync via its `upstream` remote.
+> What is different here: the artifact is a **single self-contained binary** (`bun build --compile`, four platforms) instead of an npm package, and the entire build/test/release toolchain is pinned in Docker and driven through `make`.
+> See [NOTICE](./NOTICE) for the attribution and [docs/upstream-sync.md](./docs/upstream-sync.md) for the sync procedure.
 
 `ocstatusline` runs as a small standalone process that subscribes to an OpenCode server's event stream and continuously repaints a configurable status line — your model, provider, mode, token usage, cost, context window %, session timer, and git state — right in your terminal.
 

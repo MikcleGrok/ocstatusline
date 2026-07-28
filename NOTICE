@@ -1,0 +1,16 @@
+ocstatusline-bun
+
+This product is a fork of ocstatusline
+(https://github.com/amirlehmam/ocstatusline), Copyright (c) 2026 amirlehmam,
+distributed under the MIT License. The original MIT license text is kept
+verbatim in LICENSE and covers both the original work and this fork.
+
+Changes made in this fork:
+
+  * The build target is a single self-contained binary produced by
+    `bun build --compile` for darwin-arm64, darwin-x64, linux-x64 and
+    linux-arm64, instead of an npm package built with tsc.
+  * The whole build/test/release toolchain is pinned inside one Docker image and
+    driven exclusively through docker-compose + Makefile.
+  * A fixture-playback mock of the OpenCode SSE server (tests/mock/) removes the
+    need for a live `opencode serve` in tests and smoke runs.
