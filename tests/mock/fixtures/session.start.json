@@ -1,0 +1,13 @@
+{
+  "type": "session.start",
+  "properties": {
+    "info": {
+      "id": "sess-test-123",
+      "cwd": "/home/user/project",
+      "model": {
+        "id": "gpt-4",
+        "provider": "openai"
+      }
+    }
+  }
+}

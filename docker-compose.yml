@@ -1,0 +1,68 @@
+# docker-compose.yml — three services, one pinned image.
+# Source is bind-mounted (./ -> /src), build output goes to ./build (-> /out).
+# The image name/content tag comes from .env (BUN_VERSION).
+services:
+  # builder: runs `bun build --compile` for four targets.
+  # ./build/ is bind-mounted to /out inside the container.
+  builder:
+    build:
+      context: .
+      dockerfile: .builder/Dockerfile
+      args:
+        - BUN_VERSION=${BUN_VERSION}
+    image: ${IMAGE_NAME}
+    working_dir: /src
+    volumes:
+      - .:/src
+      - ./build:/out
+    tmpfs:
+      - /build:exec,size=100M
+    # CMD overridden by Makefile targets.
+
+  # test-runner: runs vitest suite in the toolchain image.
+  # Uses bun as the test runtime (TEST_RUNTIME=bun).
+  test-runner:
+    build:
+      context: .
+      dockerfile: .builder/Dockerfile
+      args:
+        - BUN_VERSION=${BUN_VERSION}
+    image: ${IMAGE_NAME}
+    working_dir: /src
+    volumes:
+      - .:/src
+      - ./build:/out
+    environment:
+      - COLUMNS=${TEST_COLUMNS}
+      - TEST_RUNTIME=${TEST_RUNTIME}
+    # CMD overridden by Makefile targets.
+
+# smoke: runs the compiled binary inside a minimal Bun-less image
+# to prove zero-runtime-dependency. Uses the mock-opencode server
+# to avoid needing a real opencode serve.
+  smoke:
+    image: gcr.io/distroless/cc-debian12:nonroot
+    working_dir: /app
+    volumes:
+      - ./build:/app:ro
+    environment:
+      - COLUMNS=${TEST_COLUMNS}
+    depends_on:
+      - mock-opencode
+    # CMD overridden by Makefile targets.
+
+  # mock-opencode: fixture-playback SSE server on port 4096.
+  # Written in TypeScript, run with bun. No source baked into image.
+  mock-opencode:
+    build:
+      context: .
+      dockerfile: .builder/Dockerfile
+      args:
+        - BUN_VERSION=${BUN_VERSION}
+    image: ${IMAGE_NAME}
+    working_dir: /src
+    volumes:
+      - .:/src
+    ports:
+      - "${MOCK_PORT}:4096"
+    command: ["run", "tests/mock/mock-opencode.ts"]
