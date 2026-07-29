@@ -128,3 +128,32 @@ clean:
 .PHONY: mock
 mock:
 	docker compose up mock-opencode
+
+# -----------------------------------------------------------------------------
+# Check yoga-layout WASM loader (bun --compile requirement)
+# -----------------------------------------------------------------------------
+.PHONY: check-yoga
+check-yoga: deps
+	@echo "=== Checking yoga-layout WASM loader ==="
+	docker compose run --rm --no-deps \
+		-w /src \
+		--entrypoint bun \
+		builder \
+		run .builder/check-yoga-loader.ts
+
+# -----------------------------------------------------------------------------
+# mock-opencode (fixture playback instead of a live `opencode serve`)
+# -----------------------------------------------------------------------------
+
+.PHONY: mock-up mock-down mock-logs mock-check
+mock-up: deps ## Start mock-opencode and wait until it is healthy
+	docker compose up -d --wait --wait-timeout 60 mock-opencode
+
+mock-down: ## Stop mock-opencode
+	docker compose rm -sf mock-opencode
+
+mock-logs: ## Follow mock-opencode's logs
+	docker compose logs -f --tail=100 mock-opencode
+
+mock-check: mock-up ## Prove the SDK talks to mock-opencode: run the daemon in dev mode and grep its output
+	docker compose run --rm --no-deps -T -e OCSL_SERVER=http://mock-opencode:4096 --entrypoint bun builder run /src/.builder/mock-check.ts
