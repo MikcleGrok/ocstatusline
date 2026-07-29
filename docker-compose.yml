@@ -65,4 +65,6 @@ services:
       - .:/src
     ports:
       - "${MOCK_PORT}:4096"
+    environment:
+      - MOCK_FIXTURE=normal-session.jsonl
     command: ["run", "tests/mock/mock-opencode.ts"]
