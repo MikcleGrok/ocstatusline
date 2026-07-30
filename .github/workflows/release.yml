@@ -34,10 +34,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes \
-            build/ocstatusline-* build/SHA256SUMS
+          if gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes \
+              build/ocstatusline-* build/SHA256SUMS 2>/tmp/gh-create.err; then
+            echo "::notice::Created release $GITHUB_REF_NAME"
+          else
+            echo "::notice::Release $GITHUB_REF_NAME already exists; uploading refreshed assets with --clobber"
+            cat /tmp/gh-create.err
+            gh release upload "$GITHUB_REF_NAME" --clobber \
+              build/ocstatusline-* build/SHA256SUMS
+          fi
 
       - name: Collect container logs
         if: always()
