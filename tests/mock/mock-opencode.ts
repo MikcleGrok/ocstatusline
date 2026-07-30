@@ -76,8 +76,8 @@ export function startMock(opts: MockOptions): MockHandle {
   });
 
   return {
-    port: server.port,
-    url: `http://127.0.0.1:${server.port}`,
+    port: server.port ?? opts.port,
+    url: `http://127.0.0.1:${server.port ?? opts.port}`,
     stop: () => server.stop(true),
   };
 }

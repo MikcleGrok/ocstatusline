@@ -15,4 +15,13 @@ describe('parseCli', () => {
     expect(parseCli(['start', '--server', 'http://127.0.0.1:4096']))
       .toEqual({ mode: 'daemon', serverUrl: 'http://127.0.0.1:4096' });
   });
+  it('--help → help mode', () => {
+    expect(parseCli(['--help'])).toEqual({ mode: 'help' });
+  });
+  it('-h → help mode', () => {
+    expect(parseCli(['-h'])).toEqual({ mode: 'help' });
+  });
+  it('help → help mode', () => {
+    expect(parseCli(['help'])).toEqual({ mode: 'help' });
+  });
 });

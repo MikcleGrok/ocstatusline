@@ -46,39 +46,54 @@ It reuses ~70% of ccstatusline's concepts (widget engine, Powerline, colors, fle
 
 ## Requirements
 
-- **Node.js ≥ 22** (the project is developed and tested on Node 24).
+- **Nothing at runtime.** The release artifact is a single self-contained binary with the Bun runtime inside it — no Node.js, no npm, no `node_modules`.
 - **[OpenCode](https://github.com/sst/opencode) ≥ 1.2.6** available on your `PATH` (`opencode`), if you want `ocstatusline` to manage its own server.
+- **To build it yourself:** Docker and GNU make. The Bun version is pinned inside the toolchain image, so nothing has to be installed on the host.
+- **On musl distributions (Alpine):** the published Linux builds are glibc binaries — install `gcompat` (`apk add gcompat`) before running one.
 
 ---
 
 ## Install
 
-Run it directly with no install:
+### Homebrew (macOS or Linux)
 
 ```bash
-npx ocstatusline          # open the config TUI
-npx ocstatusline start    # run the live daemon
+brew install MikcleGrok/ocstatusline/ocstatusline
 ```
 
-Or install globally:
+One command, no tap setup — Homebrew auto-creates the
+`MikcleGrok/ocstatusline` tap from `github.com/MikcleGrok/homebrew-ocstatusline`
+and installs the matching prebuilt binary. `brew update && brew upgrade`
+picks up new releases. See [docs/homebrew-tap.md](./docs/homebrew-tap.md) for
+how the tap repo is laid out and how a release updates it.
+
+### Prebuilt binary
+
+Download the binary for your platform from the [latest release](https://github.com/MikcleGrok/ocstatusline/releases/latest), verify it, make it executable:
 
 ```bash
-npm install -g ocstatusline
-ocstatusline               # config TUI
-ocstatusline start         # live daemon
+curl -fsSLO https://github.com/MikcleGrok/ocstatusline/releases/latest/download/ocstatusline-darwin-arm64
+curl -fsSLO https://github.com/MikcleGrok/ocstatusline/releases/latest/download/SHA256SUMS
+sha256sum --ignore-missing -c SHA256SUMS
+chmod +x ocstatusline-darwin-arm64
+./ocstatusline-darwin-arm64 --version
 ```
+
+Four builds are published per release: `ocstatusline-darwin-arm64`, `ocstatusline-darwin-x64`, `ocstatusline-linux-x64`, `ocstatusline-linux-arm64`. Put the one you downloaded somewhere on your `PATH` as `ocstatusline`.
 
 ### From source
 
-```bash
-git clone https://github.com/amirlehmam/ocstatusline.git
-cd ocstatusline
-npm install
-npm run build
-npm link                   # optional: expose the `ocstatusline` command
-```
+Docker and GNU make are the only prerequisites — the Bun version is pinned inside the toolchain image:
 
-If you skip `npm link`, run it with `node dist/index.js …` instead of `ocstatusline …`.
+```bash
+git clone https://github.com/MikcleGrok/ocstatusline.git
+cd ocstatusline
+make build            # binary for your own platform, into ./build
+make test             # the vitest suite, inside the toolchain image
+make smoke            # runs the compiled binary and asserts its output
+make build-all        # cross-compile every published target
+make help             # every available target
+```
 
 ---
 
@@ -194,27 +209,26 @@ A pure reducer folds OpenCode events into in-memory state (deduping streaming me
 
 ## Development
 
+Everything runs in Docker through `make`; there are no raw `docker compose` commands to type and no host toolchain to install.
+
 ```bash
-npm run dev          # run the entry point with tsx
-npm run build        # compile TypeScript → dist/
-npm test             # run the Vitest suite
-npm run typecheck    # tsc --noEmit
+make help            # every target, with a one-line description
+make install         # bun install --frozen-lockfile into the cache volumes
+make test            # the vitest suite inside the pinned toolchain image
+make typecheck       # tsc --noEmit
+make check-yoga      # assert yoga-layout still loads its WASM statically
+make build           # compile for your own platform into ./build
+make build-all       # cross-compile every release target
+make smoke           # run the compiled binary: --version, live render, pty TUI
+make mock-up         # start the fixture-playback OpenCode mock
+make ci-test         # exactly what CI runs
+make release         # gates + all targets + SHA256SUMS
+make clean           # drop the cache volumes and ./build
 ```
 
-The codebase keeps a strict **pure-core / IO-at-the-edges** split: the event reducer, selectors, git parser, color/render helpers, widgets, and the TUI edit-state reducer are pure and unit-tested; the SDK connection, git CLI, filesystem, and Ink rendering live at the boundaries. That's why the bulk of behavior is covered by fast, deterministic unit tests.
+The version reported by `--version` is stamped at build time from `git describe --tags --always --dirty`; a tree checked out without a build reports `dev`.
 
-```
-src/
-  index.ts            CLI dispatcher (TUI vs daemon)
-  daemon.ts           live render loop
-  cli.ts              argument parsing
-  data/               server connection, event reducer, selectors, models, git
-  render/             ansi, colors, powerline, flex, renderer
-  widgets/            widget registry
-  tui/                Ink config UI (pure edit reducer + thin screens)
-  types/              shared domain types
-  utils/              settings load/save
-```
+Keeping the fork current is documented in [docs/upstream-sync.md](./docs/upstream-sync.md).
 
 ---
 

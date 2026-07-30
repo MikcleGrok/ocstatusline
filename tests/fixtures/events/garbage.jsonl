@@ -1,0 +1,8 @@
+# Malformed / unexpected events — the parser must survive every one of these.
+{"type":"weird.thing","properties":{}}
+{}
+{"type":"message.updated"}
+{"type":"message.updated","properties":{}}
+{"type":"message.updated","properties":{"info":{"id":"u_1","role":"user"}}}
+{"type":"message.updated","properties":{"info":{"id":"msg_g","role":"assistant","tokens":null,"cost":"not-a-number","time":null}}}
+{"type":"session.idle"}

@@ -1,0 +1,6 @@
+# Normal session: one assistant message streamed twice (same id, growing cost),
+# then a second assistant message, then the session goes idle.
+{"type":"message.updated","properties":{"info":{"id":"msg_1","role":"assistant","sessionID":"ses_1","modelID":"qwen3-coder","providerID":"ollama","mode":"build","path":{"cwd":"/proj","root":"/proj"},"time":{"created":1767225600000},"cost":0.004,"tokens":{"input":1200,"output":40,"reasoning":0,"cache":{"read":300,"write":100}}}}}
+{"type":"message.updated","properties":{"info":{"id":"msg_1","role":"assistant","sessionID":"ses_1","modelID":"qwen3-coder","providerID":"ollama","mode":"build","path":{"cwd":"/proj","root":"/proj"},"time":{"created":1767225600000},"cost":0.008,"tokens":{"input":1200,"output":180,"reasoning":0,"cache":{"read":300,"write":100}}}}}
+{"type":"message.updated","properties":{"info":{"id":"msg_2","role":"assistant","sessionID":"ses_1","modelID":"qwen3-coder","providerID":"ollama","mode":"build","path":{"cwd":"/proj","root":"/proj"},"time":{"created":1767225660000},"cost":0.004,"tokens":{"input":2400,"output":90,"reasoning":0,"cache":{"read":900,"write":0}}}}}
+{"type":"session.idle","properties":{"sessionID":"ses_1"}}
