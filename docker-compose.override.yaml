@@ -1,0 +1,4 @@
+services:
+  mock-opencode:
+    ports:
+      - "${MOCK_PORT:-4096}:4096"
