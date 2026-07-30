@@ -3,3 +3,4 @@ dist/
 *.log
 build/
 .env
+!.env.dist
