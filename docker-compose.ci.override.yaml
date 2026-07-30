@@ -1,14 +1,14 @@
 services:
   builder:
     container_name: ocstatusline-builder-${CI_JOB_ID}
-    # Named volumes are created root:root, so the builder runs as root to
-    # write into /out. CI is ephemeral; the local override keeps the
-    # HOST_UID:GID user + ./build:/out bind-mount for the developer.
+    # Bind-mount ./build:/out is inherited from the base file, so write goes
+    # straight to the runner filesystem where release.yml can pick it up.
+    # The runner-side dir gets created root:root (docker create_host_path),
+    # so the container has to run as root for bun to write into /out.
     user: "0:0"
     networks:
       - common
     volumes:
-      - out:/out
       - node_modules:/src/node_modules
       - bun_cache:/bun-cache
     restart: "no"
@@ -18,7 +18,6 @@ services:
     networks:
       - common
     volumes:
-      - out:/out
       - node_modules:/src/node_modules
       - bun_cache:/bun-cache
     restart: "no"
@@ -36,9 +35,6 @@ services:
     container_name: ocstatusline-smoke-${CI_JOB_ID}
     networks:
       - common
-    volumes:
-      - out:/out:ro
-      - ./tests/smoke:/smoke:ro
     restart: "no"
 
 networks:
@@ -46,8 +42,6 @@ networks:
     name: ocstatusline-${CI_JOB_ID}
 
 volumes:
-  out:
-    name: ocstatusline-out-${CI_JOB_ID}
   node_modules:
     name: ocstatusline-node-modules-${CI_JOB_ID}
   bun_cache:
