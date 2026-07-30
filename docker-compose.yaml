@@ -61,7 +61,6 @@ services:
 
   smoke:
     image: debian:12-slim
-    platform: linux/arm64
     working_dir: /out
     environment:
       COLUMNS: ${TEST_COLUMNS}
