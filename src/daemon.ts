@@ -21,10 +21,11 @@ function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, 
   prevLineCount = lines.length;
 }
 
-export async function runDaemon(opts: { serverUrl?: string }): Promise<void> {
+export async function runDaemon(opts: { serverUrl?: string; timeoutMs?: number }): Promise<void> {
   const settings = loadSettings();
   const getLimit = loadLimitLookup();
   const serverUrl = opts.serverUrl;
+  const timeoutMs = opts.timeoutMs;
   let state = emptyState();
 
   const conn = await connect(serverUrl);
@@ -45,4 +46,8 @@ export async function runDaemon(opts: { serverUrl?: string }): Promise<void> {
   const shutdown = () => { clearInterval(tick); stop(); conn.close(); process.stdout.write('\n'); process.exit(0); };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  if (timeoutMs && timeoutMs > 0) {
+    setTimeout(shutdown, timeoutMs);
+  }
 }

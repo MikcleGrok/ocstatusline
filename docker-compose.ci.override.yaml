@@ -1,0 +1,43 @@
+services:
+  builder:
+    container_name: ocstatusline-builder-${CI_JOB_ID}
+    networks:
+      - common
+    volumes:
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    restart: "no"
+
+  test-runner:
+    container_name: ocstatusline-test-runner-${CI_JOB_ID}
+    networks:
+      - common
+    volumes:
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    restart: "no"
+
+  mock-opencode:
+    container_name: ocstatusline-mock-opencode-${CI_JOB_ID}
+    networks:
+      - common
+    volumes:
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    restart: "no"
+
+  smoke:
+    container_name: ocstatusline-smoke-${CI_JOB_ID}
+    networks:
+      - common
+    restart: "no"
+
+networks:
+  common:
+    name: ocstatusline-${CI_JOB_ID}
+
+volumes:
+  node_modules:
+    name: ocstatusline-node-modules-${CI_JOB_ID}
+  bun_cache:
+    name: ocstatusline-bun-cache-${CI_JOB_ID}

@@ -1,0 +1,84 @@
+services:
+  builder:
+    image: ${IMAGE_NAME}:${BASETAG}
+    user: "${HOST_UID}:${HOST_GID}"
+    working_dir: /src
+    environment:
+      HOME: /tmp
+      BUN_INSTALL_CACHE_DIR: /bun-cache
+      COLUMNS: ${TEST_COLUMNS}
+      TERM: xterm-256color
+    volumes:
+      - .:/src
+      - ./build:/out
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    networks:
+      - common
+
+  test-runner:
+    image: ${IMAGE_NAME}:${BASETAG}
+    user: "${HOST_UID}:${HOST_GID}"
+    working_dir: /src
+    environment:
+      HOME: /tmp
+      BUN_INSTALL_CACHE_DIR: /bun-cache
+      COLUMNS: ${TEST_COLUMNS}
+      TERM: xterm-256color
+      CI: "true"
+    volumes:
+      - .:/src
+      - ./build:/out
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    networks:
+      - common
+
+  mock-opencode:
+    image: ${IMAGE_NAME}:${BASETAG}
+    user: "${HOST_UID}:${HOST_GID}"
+    working_dir: /src
+    command: ["bun", "run", "tests/mock/mock-opencode.ts"]
+    environment:
+      HOME: /tmp
+      BUN_INSTALL_CACHE_DIR: /bun-cache
+      MOCK_PORT: "4096"
+      MOCK_FIXTURE: tests/fixtures/events/normal-session.jsonl
+      MOCK_DELAY_MS: "200"
+      MOCK_LOOP: "1"
+    volumes:
+      - .:/src
+      - node_modules:/src/node_modules
+      - bun_cache:/bun-cache
+    networks:
+      - common
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4096/healthz"]
+      start_period: 5s
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  smoke:
+    image: debian:12-slim
+    platform: linux/arm64
+    working_dir: /out
+    environment:
+      COLUMNS: ${TEST_COLUMNS}
+      TERM: xterm-256color
+    volumes:
+      - ./build:/out:ro
+      - ./tests/smoke:/smoke:ro
+    networks:
+      - common
+    depends_on:
+      mock-opencode:
+        condition: service_healthy
+
+networks:
+  common:
+    name: ocstatusline
+
+volumes:
+  node_modules:
+  bun_cache:

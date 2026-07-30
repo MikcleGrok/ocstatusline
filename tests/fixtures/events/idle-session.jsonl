@@ -1,0 +1,2 @@
+# Idle session: nothing but the idle signal, no assistant message at all.
+{"type":"session.idle","properties":{"sessionID":"ses_1"}}
