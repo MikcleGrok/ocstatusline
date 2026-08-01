@@ -94,6 +94,16 @@ const module: TuiPluginModule = {
         },
       },
     });
+    // Claim the built-in home-screen footer slot (internal:home-footer registers it at
+    // order: 100) with a lower order so we win the single_winner race and suppress
+    // OpenCode's own cwd/branch/version line — app_bottom above already covers that
+    // info on the home screen, so this slot renders nothing.
+    api.slots.register({
+      order: 50,
+      slots: {
+        home_footer: () => null,
+      },
+    });
   },
 };
 
