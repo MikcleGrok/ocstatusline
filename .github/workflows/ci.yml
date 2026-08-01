@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      CI_JOB_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run the same targets as a local run
+        run: make ci-test
+
+      - name: Collect container logs
+        if: always()
+        run: make ci-logs > containers.log 2>&1 || true
+
+      - name: Tear the stack down
+        if: always()
+        run: make ci-down || true
+
+      - name: Upload logs and artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            containers.log
+            build/
+          if-no-files-found: warn
