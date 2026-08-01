@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTuiFooter, getTuiGitInfo, parseTuiGitInfo } from '../../src/tui/footer.js';
-import { gitInfoForRoute, tuiRouteKey, tuiRouteSnapshot } from '../../.opencode/tui-plugins/ocstatusline.js';
+import { formatTuiFooter, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
 
 describe('TUI footer', () => {
   const git = { isRepo: true, root: '/work/sender', branch: 'DEV-15309' };
