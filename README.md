@@ -6,7 +6,7 @@
 > What is different here: the artifact is a **single self-contained binary** (`bun build --compile`, four platforms) instead of an npm package, and the entire build/test/release toolchain is pinned in Docker and driven through `make`.
 > See [NOTICE](./NOTICE) for the attribution and [docs/upstream-sync.md](./docs/upstream-sync.md) for the sync procedure.
 
-`ocstatusline` runs as a small standalone process that subscribes to an OpenCode server's event stream and continuously repaints a configurable status line — your model, provider, mode, token usage, cost, context window %, session timer, and git state — right in your terminal.
+`ocstatusline` runs as a small standalone process that subscribes to an OpenCode server's event stream and continuously repaints a configurable status line — your model, provider, mode, token usage, cost, context window %, session timer, and git state — right in your terminal. It also provides a one-shot stdin renderer for integrations that explicitly invoke it.
 
 ```
 qwen3-coder · main* · ctx 42% · $0.12 · 3m12s
@@ -20,14 +20,14 @@ It ships with an interactive **config TUI** (built with [Ink](https://github.com
 
 [ccstatusline](https://github.com/sirmalloc/ccstatusline) works because **Claude Code reserves a status-line slot and invokes an external command**, handing it a JSON snapshot on each refresh. It installs itself into Claude's `settings.json` and is *pulled* once per refresh.
 
-**OpenCode has no equivalent.** There is no status-line hook, no external-command slot for a persistent footer, and the built-in TUI status bar is not pluggable. So `ocstatusline` inverts the model:
+**OpenCode has no equivalent.** There is no direct official status-line hook, no external-command slot for a persistent footer, and the built-in TUI status bar is not pluggable. OpenCode does not invoke `ocstatusline render --stdin` automatically. So `ocstatusline` inverts the model:
 
 | | ccstatusline (Claude Code) | ocstatusline (OpenCode) |
 |---|---|---|
 | Trigger | **Pull** — invoked per refresh | **Push** — subscribes to the live event stream |
 | Output | Writes to Claude's status-line slot | Autonomous ANSI daemon in its own pane |
 | Data source | Claude JSONL transcripts + usage API | `@opencode-ai/sdk` events + `models.json` + git |
-| Lifecycle | One-shot process | Long-lived daemon |
+| Lifecycle | One-shot process | Long-lived daemon, or explicitly invoked one-shot render |
 
 It reuses ~70% of ccstatusline's concepts (widget engine, Powerline, colors, flex-width, an Ink config TUI); only the **data source** and the **output mechanism** differ.
 
@@ -143,6 +143,24 @@ ocstatusline start --server http://127.0.0.1:4096
 ```
 
 A typical setup is to run `ocstatusline start` in one pane (or a split) and your `opencode` session in another, so the status line sits alongside your work.
+
+### Render one snapshot from stdin
+
+`render --stdin` reads exactly one JSON object until EOF and writes ordinary
+newline-terminated lines. It never performs cursor-control repainting. This is
+an `ocstatusline` contract, not a Claude contract, and OpenCode does not call it
+automatically because OpenCode currently has no official status-line hook.
+
+```bash
+printf '%s\n' '{"version":1,"model":"qwen3-coder","provider":"ollama","mode":"build","cwd":"/work/app","tokens":{"input":6000,"output":300},"context":{"tokens":6553,"limit":65536},"cost":0.04,"sessionDurationMs":192000,"termWidth":120,"git":{"isRepo":true,"branch":"main","dirty":false}}' | ocstatusline render --stdin
+```
+
+The versioned input shape is owned by `ocstatusline`: `version` is optional for
+backward compatibility; when provided, it must be `1`, and
+`model`, `provider`, `mode`, `cwd`, `tokens` (including optional `total`), `context`, `cost`,
+`sessionDurationMs`, `termWidth`, and `git` are optional. Missing optional data
+is rendered as empty or zero values where appropriate. Invalid JSON or an
+unsupported version is reported on stderr and exits with status 1.
 
 ---
 

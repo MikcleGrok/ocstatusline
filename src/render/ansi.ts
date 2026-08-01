@@ -1,8 +1,14 @@
 export const RESET = '\x1b[0m';
 export function sgr(codes: (string | number)[]): string { return `\x1b[${codes.join(';')}m`; }
-// Strip ANSI for width calculations
 export function stripAnsi(s: string): string {
-  return s.replace(/\x1b\[[0-9;]*m/g, '');
+  return s
+    .replace(/\x1b\][^\x07]*?(?:\x07|\x1b\\)/g, '')
+    .replace(/(?:\x1bP|\x1bX|\x1b\^|\x1b_)[\s\S]*?\x1b\\/g, '')
+    .replace(/\x1b\[[0-?]*[ -\/]*[@-~]/g, '')
+    .replace(/\x1b[@-_]/g, '')
+    .replace(/\x9d[^\x07]*?(?:\x07|\x1b\\)/g, '')
+    .replace(/\x9b[0-?]*[ -\/]*[@-~]/g, '')
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
 }
 
 // Build the escape sequence to repaint a block of `lines`, given how many
