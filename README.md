@@ -162,6 +162,76 @@ backward compatibility; when provided, it must be `1`, and
 is rendered as empty or zero values where appropriate. Invalid JSON or an
 unsupported version is reported on stderr and exits with status 1.
 
+### Экспериментальный TUI adapter для OpenCode 1.18.x
+
+В checkout есть TUI plugin `.opencode/tui-plugins/ocstatusline.ts`. Каталог
+`.opencode/plugins/` предназначен для server hooks и обслуживается отдельным
+server plugin loader; TUI-only module там размещать нельзя. Регистрация TUI
+plugin выполняется через `.opencode/tui.json` с ключом `plugin`. Plugin
+регистрирует footer `app_bottom` и берет данные из текущей TUI session через
+локальный `@opencode-ai/plugin` API, без второго SDK-клиента или SSE-подключения.
+Этот API не является стабильным или официальным status-line API OpenCode. Custom
+footer имеет формат `$47.78 · sender · DEV-15309`: `sender` — basename корня
+Git-репозитория, branch выводится целиком. Баланс `ocstatusline` больше не
+запрашивает у OpenRouter напрямую и не читает никакие ключи сам: он подключается
+к локальному демону [`secretd`](https://github.com/MikcleGrok/secretd) по Unix
+socket `~/.secretd/sock` и вызывает его модуль `openrouter/credits` (общий
+account balance по management-ключу, `total_credits - total_usage`). Если
+`secretd` отвечает `ok: true` без данных (секрет ещё не зарегистрирован),
+`ocstatusline` вызывает модуль `openrouter/key-limit` (per-key remaining limit
+ключа, выданного OpenCode) как второй источник. Оба модуля и приоритет между
+ними задаёт сам `secretd`; `ocstatusline` только читает результат.
+Строка серого цвета получает один левый отступ через OpenTUI `paddingLeft: 1`.
+Штатный footer OpenCode сохраняется и продолжает показывать model, context,
+session cost, timer и прочие widgets; custom footer их не дублирует.
+Для запуска plugin из checkout:
+
+```bash
+cd /Users/sergey/projects/ocstatusline
+npm install --prefix .opencode --no-audit --no-fund
+opencode
+```
+
+Если `secretd` не установлен или не запущен, подключение к сокету не
+удаётся, и это ожидаемое, не ошибочное состояние: баланс просто не
+отображается (footer выводится без суммы), пока демон не поднят. Установка и
+настройка `secretd` — вне области этого README, см.
+[репозиторий `secretd`](https://github.com/MikcleGrok/secretd).
+последнее успешно полученное значение сохраняется до следующего успешного
+обновления. На home route custom строка может быть нейтральной до завершения
+асинхронного git refresh; вне Git-репозитория она остается пустой. Баланс
+обновляется асинхронно при запуске и не чаще одного раза в 60 секунд, поэтому
+network request не выполняется из render callback. Git-информация также
+загружается асинхронно при запуске: обычный refresh выполняется не чаще одного
+раза в 10 секунд, но при смене route, session или cwd новый git state загружается
+немедленно; render callback только читает уже загруженное состояние.
+
+Запускайте OpenCode из корня проекта: внешний TUI loader читает
+`.opencode/tui.json`, а относительный entry `./tui-plugins/ocstatusline.ts`
+разрешается относительно каталога `.opencode/`. Откройте или создайте session,
+дождитесь assistant message и проверьте нижнюю строку TUI. На home route после
+завершения асинхронного git refresh там отображаются project root и branch.
+Откройте или создайте session и проверьте, что строка обновляется для session
+cwd отдельно. После изменения `tui.json`, plugin или его зависимостей
+полностью выйдите из OpenCode, убедитесь, что старых процессов не осталось, и
+запустите его снова: loader не перезагружает
+уже запущенный TUI.
+
+`.opencode/package.json` закрепляет публичные зависимости `@opentui/solid`,
+`@opentui/core`, `@opentui/keymap` и `@opencode-ai/plugin` на совместимых версиях;
+они нужны runtime loader, а не standalone binary. Версия OpenCode и версия
+`@opencode-ai/plugin` связаны: проверенная комбинация сейчас `1.18.10` и
+`1.18.5`; обновление любой из них может потребовать изменений adapter.
+Standalone binary, установленный из релиза, не содержит project plugin и не
+обнаруживает его автоматически. Для такого окружения используйте fallback:
+
+```bash
+ocstatusline start --server http://127.0.0.1:4096
+```
+
+Custom footer передает OpenTUI только plain text без ANSI/control sequences;
+штатный OpenCode footer остается отдельным slot и продолжает работать.
+
 ---
 
 ## Configuration
