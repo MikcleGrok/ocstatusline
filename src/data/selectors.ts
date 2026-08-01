@@ -13,9 +13,9 @@ export function derive(state: OpencodeState, getLimit: LimitLookup, now: number)
   for (const id of Object.keys(state.byMessage)) {
     const m = state.byMessage[id];
     cost += m.cost;
-    totalTokens += m.tokens.input + m.tokens.output + m.tokens.reasoning;
+    totalTokens += m.tokens.total ?? m.tokens.input + m.tokens.output + m.tokens.reasoning;
   }
-  const contextTokens = latest ? latest.tokens.input + latest.tokens.cacheRead + latest.tokens.cacheWrite : 0;
+  const contextTokens = latest?.contextTokens ?? (latest ? latest.tokens.input + latest.tokens.cacheRead + latest.tokens.cacheWrite : 0);
   const contextLimit = getLimit(provider, model);
   const sessionDurationMs = state.sessionStart === null ? 0 : Math.max(0, now - state.sessionStart);
 

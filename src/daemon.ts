@@ -1,21 +1,16 @@
 import { connect, subscribeEvents } from './data/server.js';
 import { reduce } from './data/event-reducer.js';
-import { derive } from './data/selectors.js';
 import { loadLimitLookup } from './data/models.js';
-import { getGitInfo } from './data/git.js';
 import { renderLines } from './render/renderer.js';
+import { buildRenderContext } from './render/context.js';
 import { repaint } from './render/ansi.js';
 import { loadSettings } from './utils/config.js';
-import { emptyState, type OpencodeState, type RenderContext } from './types/index.js';
+import { emptyState, type OpencodeState } from './types/index.js';
 
 let prevLineCount = 0;
 
 function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, getLimit: ReturnType<typeof loadLimitLookup>) {
-  const now = Date.now();
-  const derived = derive(state, getLimit, now);
-  const git = getGitInfo(derived.cwd);
-  const termWidth = process.stdout.columns || 120;
-  const ctx: RenderContext = { state, derived, git, termWidth, now };
+  const ctx = buildRenderContext(state, getLimit);
   const lines = renderLines(ctx, settings);
   process.stdout.write(repaint(lines, prevLineCount));
   prevLineCount = lines.length;
