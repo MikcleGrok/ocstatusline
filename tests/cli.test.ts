@@ -15,6 +15,21 @@ describe('parseCli', () => {
     expect(parseCli(['start', '--server', 'http://127.0.0.1:4096']))
       .toEqual({ mode: 'daemon', serverUrl: 'http://127.0.0.1:4096' });
   });
+  it('render --stdin → one-shot render mode', () => {
+    expect(parseCli(['render', '--stdin'])).toEqual({ mode: 'stdin-render' });
+  });
+  it('rejects extra render --stdin arguments', () => {
+    expect(parseCli(['render', '--stdin', 'extra'])).toEqual({ mode: 'error', error: 'render --stdin does not accept additional arguments' });
+  });
+  it('rejects render without --stdin', () => {
+    expect(parseCli(['render'])).toEqual({ mode: 'error', error: 'render requires exactly --stdin' });
+  });
+  it('rejects render --help as a malformed render invocation', () => {
+    expect(parseCli(['render', '--help'])).toEqual({ mode: 'error', error: 'render requires exactly --stdin' });
+  });
+  it('rejects render --stdin=value', () => {
+    expect(parseCli(['render', '--stdin=snapshot.json'])).toEqual({ mode: 'error', error: 'render requires exactly --stdin' });
+  });
   it('--help → help mode', () => {
     expect(parseCli(['--help'])).toEqual({ mode: 'help' });
   });
