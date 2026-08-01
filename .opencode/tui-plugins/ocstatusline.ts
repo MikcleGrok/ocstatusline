@@ -1,44 +1,13 @@
 import { createSignal } from 'solid-js';
 import { jsx } from '@opentui/solid/jsx-runtime';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
-import { getTuiGitInfo, formatTuiFooter, type TuiGitInfo } from '../../src/tui/footer.js';
+import { getTuiGitInfo, formatTuiFooter, gitInfoForRoute, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { fetchOpenRouterBalance } from '../../src/tui/openrouter.js';
 
 const BALANCE_REFRESH_INTERVAL = 60_000;
 const GIT_REFRESH_INTERVAL = 10_000;
 const ROUTE_POLL_INTERVAL = 100;
 const EMPTY_GIT: TuiGitInfo = { isRepo: false, root: null, branch: null };
-
-export function tuiRouteKey(route: { name?: unknown; params?: { sessionID?: unknown } } | undefined, cwd: unknown): string | null {
-  if ((route?.name !== 'home' && route?.name !== 'session') || typeof cwd !== 'string' || !cwd) return null;
-  const sessionID = route.name === 'session' && typeof route.params?.sessionID === 'string' ? route.params.sessionID : '';
-  return `${route.name}:${sessionID}:${cwd}`;
-}
-
-export interface TuiRouteSnapshot {
-  cwd: string | null;
-  key: string | null;
-}
-
-export function tuiRouteSnapshot(
-  route: { name?: unknown; params?: { sessionID?: unknown } } | undefined,
-  state: { path?: { directory?: unknown }; session?: { get?: (sessionID: string) => unknown } },
-): TuiRouteSnapshot {
-  const homeCwd = state.path?.directory;
-  let cwd = route?.name === 'home' && typeof homeCwd === 'string' && homeCwd ? homeCwd : null;
-  if (route?.name === 'session' && typeof route.params?.sessionID === 'string') {
-    const session = state.session?.get?.(route.params.sessionID);
-    if (session && typeof session === 'object' && typeof (session as { directory?: unknown }).directory === 'string') {
-      const sessionDirectory = (session as { directory: string }).directory.trim();
-      if (sessionDirectory) cwd = sessionDirectory;
-    }
-  }
-  return { cwd, key: tuiRouteKey(route, cwd) };
-}
-
-export function gitInfoForRoute(currentKey: string | null, gitKey: string | null, git: TuiGitInfo): TuiGitInfo {
-  return currentKey !== null && currentKey === gitKey ? git : EMPTY_GIT;
-}
 
 const module: TuiPluginModule = {
   id: 'ocstatusline',
