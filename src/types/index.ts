@@ -1,8 +1,9 @@
 export interface TokenSet {
-  input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number;
+  input: number; output: number; reasoning: number; cacheRead: number; cacheWrite: number; total?: number;
 }
 export interface MsgAgg {
   role: string; cost: number; tokens: TokenSet;
+  contextTokens?: number;
   modelID?: string; providerID?: string; mode?: string; cwd?: string; created: number;
 }
 export interface OpencodeState {

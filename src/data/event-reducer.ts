@@ -14,6 +14,7 @@ export function reduce(state: OpencodeState, event: any): OpencodeState {
       tokens: {
         input: t.input ?? 0, output: t.output ?? 0, reasoning: t.reasoning ?? 0,
         cacheRead: cache.read ?? 0, cacheWrite: cache.write ?? 0,
+        total: typeof t.total === 'number' && Number.isFinite(t.total) ? t.total : undefined,
       },
       modelID: info.modelID, providerID: info.providerID, mode: info.mode,
       cwd: info.path?.cwd, created: info.time?.created ?? Date.now(),
