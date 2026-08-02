@@ -6,6 +6,7 @@ const NAMED: Record<string, number> = {
 };
 
 const DYNAMIC_COLORS: Record<number, { ansi16: number; rgb: [number, number, number] }> = {
+  40: { ansi16: 32, rgb: [0, 175, 0] },
   33: { ansi16: 33, rgb: [0, 135, 255] },
   124: { ansi16: 31, rgb: [175, 0, 0] },
 };
