@@ -1,7 +1,7 @@
 import { createSignal } from 'solid-js';
 import { jsx } from '@opentui/solid/jsx-runtime';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
-import { getTuiGitInfo, formatTuiFooter, gitInfoForRoute, tuiFooterColor, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooterSegments, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
 import { fetchOpenRouterBalanceWithSource } from '../../src/tui/openrouter.js';
 import { loadSettings } from '../../src/utils/config.js';
@@ -91,14 +91,13 @@ const module: TuiPluginModule = {
       slots: {
         app_bottom: () => {
           revision();
-          const snapshot = currentSnapshot();
-          const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
-          const line = formatTuiFooter(openrouterWeekly, git);
-          const separatorIndex = line.indexOf(' · ');
-          const balanceText = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
-          const gitText = separatorIndex === -1 ? '' : line.slice(separatorIndex);
-          return jsx('box', { paddingLeft: 1, children: [jsx('text', { fg: tuiFooterColor(openrouterWeekly), children: balanceText }), jsx('text', { fg: 'gray', children: gitText })] });
-        },
+           const snapshot = currentSnapshot();
+           const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
+           const segments = formatTuiFooterSegments(openrouterWeekly, git);
+           const [weekly, repository, account] = segments;
+           const region = (segment: (typeof segments)[number] | undefined, align: 'left' | 'center' | 'right', withSeparator: boolean) => segment ? jsx('box', { flexGrow: 1, justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start', children: [withSeparator ? jsx('text', { fg: 'gray', children: ' · ' }) : null, jsx('text', { fg: segment.color, children: segment.text })] }) : null;
+           return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', children: [region(weekly, 'left', false), region(repository, 'center', true), region(account, 'right', true)] });
+         },
       },
     });
     // Claim the built-in home-screen footer slot (internal:home-footer registers it at
