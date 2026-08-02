@@ -257,22 +257,45 @@ checkout, потому что TUI plugin loader читает исключите�
   все прочие ключи (например, `keybinds`) и уже существующие `plugin`
   entries как есть; повторный запуск не создаёт дубликат.
 
-Запуск:
+Запуск — из checkout или из установленного бинарника, команда одна и та же:
 
 ```bash
-cd /Users/sergey/projects/ocstatusline
-bun run src/index.ts install
+# из checkout — dev/source режим, файлы читаются с диска
+cd /path/to/ocstatusline && bun run src/index.ts install
+
+# из установленного бинарника — из любого каталога, файлы берутся изнутри него
+ocstatusline install
 ```
 
-Ограничение: команда рассчитана на dev/source режим и предполагает, что
-`src/` и `.opencode/` этого репозитория физически лежат на диске рядом с
-запускаемым модулем (обычный checkout или toolchain-контейнер). Полностью
-самодостаточная установка из скомпилированного standalone binary (для
-пользователей, поставивших `ocstatusline` только через Homebrew, без
-checkout) сейчас не реализована: `bun build --compile` встраивает исходники
-в собственную виртуальную файловую систему бинарника, и её файлы недоступны
-через обычные пути на диске без явного embedding через `with { type: "file" }`
-на каждый импорт — эта работа осталась за рамками текущей задачи.
+Два источника plugin-файлов, один и тот же результат:
+
+- **disk (по умолчанию).** Если `src/` и `.opencode/` этого репозитория
+  физически лежат на диске рядом с запускаемым модулем (обычный checkout или
+  toolchain-контейнер), берутся именно они — разработчик получает то, что
+  только что отредактировал, а не то, что было вкомпилировано при сборке.
+- **embedded (fallback).** У скомпилированного standalone binary никакого
+  checkout нет: `bun build --compile` кладёт исходники в собственную
+  виртуальную файловую систему (`/$bunfs/root`), недоступную по обычным
+  путям. Поэтому весь closure plugin'а вместе с pin'ами зависимостей
+  запекается в бинарник на этапе сборки — генератором
+  `scripts/generate-tui-plugin-assets.ts` в обычный TypeScript-модуль строковых
+  констант `src/tui/embedded-plugin-assets.generated.ts` (он коммитится, и
+  `tsc`/`vitest` работают без Bun и без предварительной генерации). Попытка
+  прочитать с диска падает с единственной распознаваемой ошибкой
+  `RepoCheckoutNotFoundError`, и только на неё `install` повторяется уже с
+  embedded-копией; любая другая ошибка (упавший `npm install`, битый
+  `tui.json`) пробрасывается как есть.
+
+После правки plugin'а, его closure или `.opencode/package.json` — перегенерируй
+embedded-копию, иначе бинарник поставит устаревший plugin:
+
+```bash
+make generate-tui-plugin-assets
+```
+
+Расхождение между сгенерированным файлом и репозиторием ловит
+`tests/tui/install.test.ts` (обычным `make test`), так что забыть про
+регенерацию молча не получится.
 
 ---
 
@@ -351,7 +374,7 @@ make typecheck       # tsc --noEmit
 make check-yoga      # assert yoga-layout still loads its WASM statically
 make build           # compile for your own platform into ./build
 make build-all       # cross-compile every release target
-make smoke           # run the compiled binary: --version, live render, pty TUI
+make smoke           # run the compiled binary: --version, live render, pty TUI, plugin install
 make mock-up         # start the fixture-playback OpenCode mock
 make ci-test         # exactly what CI runs
 make release         # gates + all targets + SHA256SUMS
