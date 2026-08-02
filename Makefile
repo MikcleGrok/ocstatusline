@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help env image install lock typecheck test test-watch sh run config up down clean \
-        build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui \
+        generate-tui-plugin-assets \
+        build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui smoke-install \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
         ci-test ci-down ci-logs sync-upstream sync-verify \
         brew-info brew-audit
@@ -71,6 +72,9 @@ install: image ## Install dependencies from bun.lock into the cache volumes
 
 lock: image ## Refresh bun.lock from package.json (use after touching dependencies)
 	$(DC) run --rm --no-deps builder bun install
+
+generate-tui-plugin-assets: install ## Re-bake the TUI plugin source into src/tui/embedded-plugin-assets.generated.ts (run after touching the plugin or its closure)
+	$(DC) run --rm --no-deps builder bun run scripts/generate-tui-plugin-assets.ts
 
 typecheck: image ## tsc --noEmit inside the toolchain image
 	$(DC) run --rm --no-deps builder bunx tsc --noEmit
@@ -156,6 +160,7 @@ smoke: build-linux mock-up ## Run all smoke tests
 	$(MAKE) smoke-cli
 	$(MAKE) smoke-daemon
 	$(MAKE) smoke-tui
+	$(MAKE) smoke-install
 
 smoke-cli: build-linux ## Smoke: --version + no-TTY behaviour in the toolchain-less image
 	$(DC) run --rm --no-deps -e BIN=/out/$(LINUX_BIN) -e EXPECTED_VERSION="$(VERSION)" -e COLUMNS=$(TEST_COLUMNS) -e TERM=xterm-256color smoke bash /smoke/smoke-cli.sh
@@ -165,6 +170,9 @@ smoke-daemon: build-linux mock-up ## Smoke: binary + mock-opencode -> real rende
 
 smoke-tui: build-linux ## Smoke: config TUI of compiled binary under pty
 	$(DC) run --rm --no-deps -e BIN=/out/$(LINUX_BIN) -e COLUMNS=$(TEST_COLUMNS) -e TERM=xterm-256color smoke bash /smoke/smoke-tui.sh
+
+smoke-install: build-linux ## Smoke: `install` from the binary alone writes the embedded plugin into a fake HOME
+	$(DC) run --rm --no-deps -e BIN=/out/$(LINUX_BIN) smoke bash /smoke/smoke-install.sh
 
 # ==============================================================================
 # Mock server (fixture playback instead of a live `opencode serve`)
