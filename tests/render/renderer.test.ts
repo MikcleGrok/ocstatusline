@@ -47,7 +47,7 @@ describe('renderLines', () => {
     low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 5 };
     expect(renderLines(low, weekly)[0]).toContain('38;5;33');
     low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 20 };
-    expect(renderLines(low, weekly)[0]).not.toContain('38;5;');
+    expect(renderLines(low, weekly)[0]).toContain('38;5;40');
   });
   it('passes numeric widget colors through the public pipeline', () => {
     const numericColor: Settings = { ...settings, colorLevel: 'ansi256', lines: [[{ type: 'model', color: 124 }]] };
@@ -55,10 +55,10 @@ describe('renderLines', () => {
   });
   it('renders distinct threshold escapes at every color level', () => {
     const low = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1000 } };
-    for (const [colorLevel, critical, warning] of [
-      ['ansi16', '\x1b[31m', '\x1b[33m'],
-      ['ansi256', '38;5;124', '38;5;33'],
-      ['truecolor', '38;2;175;0;0', '38;2;0;135;255'],
+    for (const [colorLevel, critical, warning, healthy] of [
+      ['ansi16', '\x1b[31m', '\x1b[33m', '\x1b[32m'],
+      ['ansi256', '38;5;124', '38;5;33', '38;5;40'],
+      ['truecolor', '38;2;175;0;0', '38;2;0;135;255', '38;2;0;175;0'],
     ] as const) {
       const weekly = { ...settings, colorLevel, lines: [[{ type: 'openrouter-weekly' }]] };
       const criticalLine = renderLines(low, weekly)[0];
@@ -66,6 +66,8 @@ describe('renderLines', () => {
       const warningLine = renderLines(low, weekly)[0];
       expect(criticalLine).toContain(critical);
       expect(warningLine).toContain(warning);
+      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 20 };
+      expect(renderLines(low, weekly)[0]).toContain(healthy);
       expect(criticalLine).not.toBe(warningLine);
       low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 2 };
     }

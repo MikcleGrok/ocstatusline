@@ -34,14 +34,39 @@ export async function getTuiGitInfo(cwd: string | null, signal?: AbortSignal): P
 
 export type TuiFooterBalance = number | null | OpenRouterWeeklyContext;
 
-function footerBalanceValue(balance: TuiFooterBalance): number | null {
-  return typeof balance === 'number' || balance === null ? balance : balance.balanceUsd;
+export interface TuiFooterSegment {
+  text: string;
+  color: 'gray' | 'green' | 'yellow' | 'red';
 }
 
-export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | 'yellow' | 'red' {
+function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRouterWeeklyContext & { source: 'account' } {
+  return typeof balance === 'object' && balance !== null && balance.source === 'account' && typeof balance.remainingUsd === 'number';
+}
+
+function footerBalanceValue(balance: TuiFooterBalance): number | null {
+  if (typeof balance === 'number' || balance === null) return balance;
+  return isAccountWeeklyBalance(balance) ? balance.remainingUsd : null;
+}
+
+export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | 'green' | 'yellow' | 'red' {
   if (typeof balance === 'number' || balance === null) return 'gray';
+  if (!isAccountWeeklyBalance(balance)) return 'gray';
   const severity = weeklyBalanceSeverity(balance);
-  return severity === 'critical' ? 'red' : severity === 'warning' ? 'yellow' : 'gray';
+  return severity === 'critical' ? 'red' : severity === 'warning' ? 'yellow' : 'green';
+}
+
+export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo): TuiFooterSegment[] {
+  if (!git.isRepo || !git.root || !git.branch) return [];
+  const value = footerBalanceValue(balance);
+  const weeklyText = value === null ? '?' : `$${value.toFixed(2)}`;
+  const segments: TuiFooterSegment[] = [
+    { text: weeklyText, color: tuiFooterColor(balance) },
+    { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' },
+  ];
+  if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null) {
+    segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: 'gray' });
+  }
+  return segments;
 }
 
 export function formatTuiFooter(balance: TuiFooterBalance, git: TuiGitInfo): string {
