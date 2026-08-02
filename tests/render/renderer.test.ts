@@ -11,10 +11,12 @@ function ctx(): RenderContext {
       totalTokens: 0, contextTokens: 6553, contextLimit: 65536, cost: 0.04, sessionDurationMs: 192000 },
     git: { isRepo: true, branch: 'main', dirty: false, ahead: 0, behind: 0, changes: 0, sha: 'abc1234' },
     termWidth: 200, now: 0,
+    openrouterWeekly: { source: null, balanceUsd: null, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 0 },
   };
 }
 const settings: Settings = {
   refreshInterval: 1000, colorLevel: 'ansi16',
+  openrouter: { weeklyBudgetUsd: 25 },
   powerline: { enabled: false, separator: '|', separatorReverse: '|' },
   lines: [[
     { type: 'model', color: 'cyan' }, { type: 'separator' },
@@ -37,5 +39,35 @@ describe('renderLines', () => {
     const c = ctx(); c.termWidth = 12;
     const [line] = renderLines(c, settings);
     expect(stripAnsi(line).length).toBeLessThanOrEqual(12);
+  });
+  it('uses threshold colors only for the weekly widget', () => {
+    const weekly = { ...settings, colorLevel: 'ansi256' as const, lines: [[{ type: 'openrouter-weekly' }]] };
+    const low = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1000 } };
+    expect(renderLines(low, weekly)[0]).toContain('38;5;124');
+    low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 5 };
+    expect(renderLines(low, weekly)[0]).toContain('38;5;33');
+    low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 20 };
+    expect(renderLines(low, weekly)[0]).not.toContain('38;5;');
+  });
+  it('passes numeric widget colors through the public pipeline', () => {
+    const numericColor: Settings = { ...settings, colorLevel: 'ansi256', lines: [[{ type: 'model', color: 124 }]] };
+    expect(renderLines(ctx(), numericColor)[0]).toContain('38;5;124');
+  });
+  it('renders distinct threshold escapes at every color level', () => {
+    const low = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1000 } };
+    for (const [colorLevel, critical, warning] of [
+      ['ansi16', '\x1b[31m', '\x1b[33m'],
+      ['ansi256', '38;5;124', '38;5;33'],
+      ['truecolor', '38;2;175;0;0', '38;2;0;135;255'],
+    ] as const) {
+      const weekly = { ...settings, colorLevel, lines: [[{ type: 'openrouter-weekly' }]] };
+      const criticalLine = renderLines(low, weekly)[0];
+      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 5 };
+      const warningLine = renderLines(low, weekly)[0];
+      expect(criticalLine).toContain(critical);
+      expect(warningLine).toContain(warning);
+      expect(criticalLine).not.toBe(warningLine);
+      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 2 };
+    }
   });
 });

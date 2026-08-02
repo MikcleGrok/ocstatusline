@@ -29,11 +29,21 @@ export interface RenderContext {
   git: GitInfo;
   termWidth: number;
   now: number;
+  openrouterWeekly: OpenRouterWeeklyContext;
+}
+export interface OpenRouterWeeklyContext {
+  source: 'account' | 'key-limit' | null;
+  balanceUsd: number | null;
+  budgetUsd: number;
+  spentUsd: number;
+  remainingUsd: number;
+  windowStartMs: number;
+  windowEndMs: number;
 }
 export type ColorLevel = 'ansi16' | 'ansi256' | 'truecolor';
 export interface WidgetConfig {
   type: string;
-  color?: string;     // name (e.g. "cyan") or hex (e.g. "#88c0d0")
+  color?: string | number; // name/hex string or ANSI-256 color number
   bold?: boolean;
   [k: string]: unknown;
 }
@@ -52,6 +62,7 @@ export interface Settings {
   refreshInterval: number; // ms
   colorLevel: ColorLevel;
   powerline: PowerlineConfig;
+  openrouter: { weeklyBudgetUsd: number };
 }
 export function emptyState(): OpencodeState {
   return { connected: false, idle: true, byMessage: {}, latestAssistantID: null, sessionStart: null, lastUpdate: 0 };
