@@ -2,6 +2,8 @@ import { basename } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseGit } from '../data/git.js';
+import { weeklyBalanceSeverity } from '../data/openrouter-weekly.js';
+import type { OpenRouterWeeklyContext } from '../types/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -30,9 +32,22 @@ export async function getTuiGitInfo(cwd: string | null, signal?: AbortSignal): P
   }
 }
 
-export function formatTuiFooter(balance: number | null, git: TuiGitInfo): string {
+export type TuiFooterBalance = number | null | OpenRouterWeeklyContext;
+
+function footerBalanceValue(balance: TuiFooterBalance): number | null {
+  return typeof balance === 'number' || balance === null ? balance : balance.balanceUsd;
+}
+
+export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | 'yellow' | 'red' {
+  if (typeof balance === 'number' || balance === null) return 'gray';
+  const severity = weeklyBalanceSeverity(balance);
+  return severity === 'critical' ? 'red' : severity === 'warning' ? 'yellow' : 'gray';
+}
+
+export function formatTuiFooter(balance: TuiFooterBalance, git: TuiGitInfo): string {
   if (!git.isRepo || !git.root || !git.branch) return '';
-  const balanceText = balance === null ? '?' : `$${balance.toFixed(2)}`;
+  const value = footerBalanceValue(balance);
+  const balanceText = value === null ? '?' : `$${value.toFixed(2)}`;
   return `${balanceText} · ${basename(git.root)} · ${git.branch}`;
 }
 

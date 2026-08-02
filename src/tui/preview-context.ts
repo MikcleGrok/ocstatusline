@@ -12,5 +12,6 @@ export function mockContext(): RenderContext {
     git: { isRepo: true, branch: 'main', dirty: true, ahead: 0, behind: 0, changes: 3, sha: 'abc1234' },
     termWidth: 80,
     now: 0,
+    openrouterWeekly: { source: null, balanceUsd: null, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 0 },
   };
 }

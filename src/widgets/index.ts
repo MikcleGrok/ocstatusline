@@ -15,11 +15,24 @@ export function fmtDuration(ms: number): string {
   return `${h}h${String(m % 60).padStart(2, '0')}m`;
 }
 
+export function fmtCountdown(ms: number): string {
+  if (ms <= 0) return 'now';
+  if (ms < 60000) return 'now';
+  const minutes = Math.floor(ms / 60000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days) return `${days}d${hours ? `${hours}h` : ''}`;
+  if (hours) return `${hours}h${mins ? `${mins}m` : ''}`;
+  return `${mins}m`;
+}
+
 const widgets: Widget[] = [
   { type: 'model', label: 'Model', render: (c) => c.derived.model ? c.derived.model.replace(/\s*\(.*context\)$/i, '') : null },
   { type: 'provider', label: 'Provider', render: (c) => c.derived.provider },
   { type: 'mode', label: 'Agent/Mode', render: (c) => c.derived.mode },
   { type: 'cost', label: 'Cost', render: (c) => c.derived.cost > 0 ? `$${c.derived.cost.toFixed(2)}` : '$0.00' },
+  { type: 'openrouter-weekly', label: 'OpenRouter Weekly', render: (c) => c.openrouterWeekly.source === 'account' ? `$${c.openrouterWeekly.remainingUsd.toFixed(2)} ${fmtCountdown(c.openrouterWeekly.windowEndMs - c.now)}` : null },
   { type: 'tokens', label: 'Tokens (total)', render: (c) => fmtK(c.derived.totalTokens) },
   { type: 'context-length', label: 'Context Length', render: (c) => fmtK(c.derived.contextTokens) },
   {

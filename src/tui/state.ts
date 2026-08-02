@@ -25,7 +25,8 @@ export type Action =
   | { t: 'togglePowerline' }
   | { t: 'setSeparator'; which: 'sep' | 'rev'; value: string }
   | { t: 'setRefresh'; ms: number }
-  | { t: 'setColorLevel'; level: ColorLevel };
+  | { t: 'setColorLevel'; level: ColorLevel }
+  | { t: 'setWeeklyBudget'; usd: number };
 
 export function initialState(settings: Settings): EditorState {
   return { settings, screen: 'menu', lineIndex: 0, itemIndex: 0, dirty: false };
@@ -95,5 +96,7 @@ export function editorReducer(s: EditorState, a: Action): EditorState {
       return { ...s, settings: { ...s.settings, refreshInterval: a.ms }, dirty: true };
     case 'setColorLevel':
       return { ...s, settings: { ...s.settings, colorLevel: a.level }, dirty: true };
+    case 'setWeeklyBudget':
+      return { ...s, settings: { ...s.settings, openrouter: { ...s.settings.openrouter, weeklyBudgetUsd: a.usd } }, dirty: true };
   }
 }

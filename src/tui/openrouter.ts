@@ -18,6 +18,11 @@ interface SecretdCallResult {
   result: unknown;
 }
 
+export interface OpenRouterBalance {
+  source: 'account' | 'key-limit';
+  balanceUsd: number;
+}
+
 function finiteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -83,13 +88,20 @@ function callSecretdModule(socketPath: string, module: string, timeoutMs: number
 // and never logs, since "secretd isn't installed/running yet" is the common
 // case today, not an error worth surfacing.
 export async function fetchOpenRouterBalance(timeoutMs: number = DEFAULT_TIMEOUT_MS, signal?: AbortSignal, socketPath: string = secretdSocketPath()): Promise<number | null> {
+  const result = await fetchOpenRouterBalanceWithSource(timeoutMs, signal, socketPath);
+  return result?.balanceUsd ?? null;
+}
+
+export async function fetchOpenRouterBalanceWithSource(timeoutMs: number = DEFAULT_TIMEOUT_MS, signal?: AbortSignal, socketPath: string = secretdSocketPath()): Promise<OpenRouterBalance | null> {
   if (signal?.aborted) return null;
   const primary = await callSecretdModule(socketPath, CREDITS_MODULE, timeoutMs, signal);
   if (!primary || !primary.ok) return null;
   if (primary.result === null) {
     const secondary = await callSecretdModule(socketPath, KEY_LIMIT_MODULE, timeoutMs, signal);
     if (!secondary || !secondary.ok) return null;
-    return finiteNumber(secondary.result);
+    const balanceUsd = finiteNumber(secondary.result);
+    return balanceUsd === null ? null : { source: 'key-limit', balanceUsd };
   }
-  return finiteNumber(primary.result);
+  const balanceUsd = finiteNumber(primary.result);
+  return balanceUsd === null ? null : { source: 'account', balanceUsd };
 }
