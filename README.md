@@ -232,6 +232,48 @@ ocstatusline start --server http://127.0.0.1:4096
 Custom footer передает OpenTUI только plain text без ANSI/control sequences;
 штатный OpenCode footer остается отдельным slot и продолжает работать.
 
+#### Глобальная установка: `ocstatusline install`
+
+По умолчанию plugin грузится только когда OpenCode запущен из корня этого
+checkout, потому что TUI plugin loader читает исключительно project-local
+`.opencode/tui.json`, глобального механизма подключения нет. Команда
+`ocstatusline install` регистрирует plugin в глобальном OpenCode config
+(`~/.config/opencode/`, либо `$XDG_CONFIG_HOME/opencode`, если переменная
+задана), так что он грузится в любом проекте на этой машине. Команда:
+
+- копирует `.opencode/tui-plugins/ocstatusline.ts` и весь его dependency
+  closure (`src/tui/footer.ts`, `src/tui/openrouter.ts`, `src/data/git.ts`,
+  `src/data/openrouter-weekly.ts`, `src/types/index.ts`,
+  `src/utils/config.ts`) в глобальный config dir, переписывая
+  `../../src/...` imports plugin entry на `../src/...` — глубина вложенности
+  меняется, потому что глобальный config dir играет роль `.opencode/`, а не
+  корня репозитория;
+- мёржит закреплённые версии зависимостей из `.opencode/package.json` в
+  `<configDir>/package.json`, не трогая посторонние поля и уже
+  присутствующие там другие зависимости;
+- выполняет `npm install --prefix <configDir> --no-audit --no-fund`;
+- идемпотентно добавляет `./tui-plugins/ocstatusline.ts` в массив `plugin`
+  внутри `<configDir>/tui.json`, создавая файл при необходимости и сохраняя
+  все прочие ключи (например, `keybinds`) и уже существующие `plugin`
+  entries как есть; повторный запуск не создаёт дубликат.
+
+Запуск:
+
+```bash
+cd /Users/sergey/projects/ocstatusline
+bun run src/index.ts install
+```
+
+Ограничение: команда рассчитана на dev/source режим и предполагает, что
+`src/` и `.opencode/` этого репозитория физически лежат на диске рядом с
+запускаемым модулем (обычный checkout или toolchain-контейнер). Полностью
+самодостаточная установка из скомпилированного standalone binary (для
+пользователей, поставивших `ocstatusline` только через Homebrew, без
+checkout) сейчас не реализована: `bun build --compile` встраивает исходники
+в собственную виртуальную файловую систему бинарника, и её файлы недоступны
+через обычные пути на диске без явного embedding через `with { type: "file" }`
+на каждый импорт — эта работа осталась за рамками текущей задачи.
+
 ---
 
 ## Configuration
