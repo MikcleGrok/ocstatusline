@@ -93,12 +93,15 @@ describe('runTuiInstall file copy', () => {
     }
   });
 
-  it('keeps the footer regions on one non-wrapping row', () => {
+  it('keeps footer segments as direct non-wrapping text children on one row', () => {
     const pluginSource = readFileSync(join(REPO_ROOT, '.opencode/tui-plugins/ocstatusline.ts'), 'utf-8');
     expect(pluginSource).toContain("width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden'");
-    expect(pluginSource).toContain("flexGrow: align === 'center' ? 1 : 0, flexShrink: align === 'center' ? 1 : 0, overflow: 'hidden'");
+    expect(pluginSource).not.toContain("jsx('box', { flexGrow");
+    expect(pluginSource).toContain("fg: weekly.color, wrapMode: 'none', children: weekly.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
-    expect(pluginSource).toContain("fg: segment.color, wrapMode: 'none', children: segment.text");
+    expect(pluginSource).toContain("fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text");
+    expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · '");
+    expect(pluginSource).toContain("fg: account.color, wrapMode: 'none', children: account.text");
   });
 
   it('does not run npm install when skipNpmInstall is set', async () => {
