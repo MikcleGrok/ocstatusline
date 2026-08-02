@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTuiFooter, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooter, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiFooterColor, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
 
 describe('TUI footer', () => {
   const git = { isRepo: true, root: '/work/sender', branch: 'DEV-15309' };
@@ -10,6 +10,19 @@ describe('TUI footer', () => {
 
   it('uses ? for an unavailable balance', () => {
     expect(formatTuiFooter(null, git)).toBe('? · sender · DEV-15309');
+  });
+
+  it('colors the footer balance from the account weekly remaining percentage', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
+    expect(tuiFooterColor(weekly)).toBe('red');
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 5 })).toBe('yellow');
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 20 })).toBe('gray');
+  });
+
+  it('does not color key-limit or unavailable balances as weekly alerts', () => {
+    const weekly = { source: 'key-limit' as const, balanceUsd: 1, budgetUsd: 25, spentUsd: 0, remainingUsd: 1, windowStartMs: 0, windowEndMs: 1 };
+    expect(tuiFooterColor(weekly)).toBe('gray');
+    expect(formatTuiFooter({ ...weekly, source: null, balanceUsd: null }, git)).toBe('? · sender · DEV-15309');
   });
 
   it('is empty when the route is not in a git repository', () => {

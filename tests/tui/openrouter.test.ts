@@ -3,7 +3,7 @@ import { createServer, type Socket } from 'node:net';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
-import { fetchOpenRouterBalance, secretdSocketPath } from '../../src/tui/openrouter.js';
+import { fetchOpenRouterBalance, fetchOpenRouterBalanceWithSource, secretdSocketPath } from '../../src/tui/openrouter.js';
 
 // Real Unix domain socket test double for the secretd consumer<->core wire
 // protocol: one connection, one request line of JSON, one response line of
@@ -104,6 +104,18 @@ describe('fetchOpenRouterBalance over the secretd socket', () => {
       },
     );
     expect(connections).toBe(1);
+  });
+  it('preserves the source when fetching account versus key-limit balances', async () => {
+    await withSecretdServer(
+      (socket) => respondOnce(socket, { ok: true, result: 47.78 }),
+      async (socketPath) => expect(fetchOpenRouterBalanceWithSource(1000, undefined, socketPath)).resolves.toEqual({ source: 'account', balanceUsd: 47.78 }),
+    );
+    await withSecretdServer(
+      (socket) => {
+        socket.once('data', (data) => socket.end(`${JSON.stringify(JSON.parse(data.toString()).module === 'openrouter/credits' ? { ok: true, result: null } : { ok: true, result: 12.34 })}\n`));
+      },
+      async (socketPath) => expect(fetchOpenRouterBalanceWithSource(1000, undefined, socketPath)).resolves.toEqual({ source: 'key-limit', balanceUsd: 12.34 }),
+    );
   });
 
   it('returns null without throwing when the socket does not exist', async () => {

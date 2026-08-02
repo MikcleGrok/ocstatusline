@@ -8,20 +8,21 @@ const LEVELS: ColorLevel[] = ['ansi16', 'ansi256', 'truecolor'];
 
 export function SettingsScreen({ state, dispatch }: { state: EditorState; dispatch: (a: Action) => void }) {
   const [editRefresh, setEditRefresh] = useState(false);
-  const { refreshInterval, colorLevel } = state.settings;
-  const rows = [`Refresh interval (ms): ${refreshInterval}`, `Color level: ${colorLevel}`];
+  const [editBudget, setEditBudget] = useState(false);
+  const { refreshInterval, colorLevel, openrouter } = state.settings;
+  const rows = [`Refresh interval (ms): ${refreshInterval}`, `Color level: ${colorLevel}`, `OpenRouter weekly budget (USD): ${openrouter.weeklyBudgetUsd}`];
 
   useInput((_input, key) => {
-    if (editRefresh) return;
+    if (editRefresh || editBudget) return;
     if (key.escape) dispatch({ t: 'nav', screen: 'menu' });
     else if (key.upArrow) dispatch({ t: 'cursor', delta: -1, count: rows.length });
     else if (key.downArrow) dispatch({ t: 'cursor', delta: 1, count: rows.length });
     else if (key.return) {
       if (state.itemIndex === 0) setEditRefresh(true);
-      else {
+      else if (state.itemIndex === 1) {
         const next = LEVELS[(LEVELS.indexOf(colorLevel) + 1) % LEVELS.length];
         dispatch({ t: 'setColorLevel', level: next });
-      }
+      } else setEditBudget(true);
     }
   });
 
@@ -38,6 +39,8 @@ export function SettingsScreen({ state, dispatch }: { state: EditorState; dispat
       </Box>
     );
   }
+
+  if (editBudget) return <Box flexDirection="column"><Text bold>OpenRouter weekly budget (USD)</Text><TextPrompt label="USD" initial={String(openrouter.weeklyBudgetUsd)} onSubmit={(v) => { const n = Number(v); if (Number.isFinite(n) && n > 0) dispatch({ t: 'setWeeklyBudget', usd: n }); setEditBudget(false); }} onCancel={() => setEditBudget(false)} /></Box>;
 
   return (
     <Box flexDirection="column">

@@ -6,6 +6,7 @@ import type { Settings } from '../../src/types/index';
 function twoLine(): Settings {
   return {
     refreshInterval: 1000, colorLevel: 'truecolor',
+    openrouter: { weeklyBudgetUsd: 25 },
     powerline: { enabled: false, separator: '', separatorReverse: '' },
     lines: [
       [{ type: 'model' }, { type: 'cost' }],
@@ -115,6 +116,11 @@ describe('editorReducer', () => {
     s = editorReducer(s, { t: 'setColorLevel', level: 'ansi16' });
     expect(s.settings.refreshInterval).toBe(500);
     expect(s.settings.colorLevel).toBe('ansi16');
+  });
+  it('setWeeklyBudget updates the OpenRouter budget and marks dirty', () => {
+    const s = editorReducer(initialState(twoLine()), { t: 'setWeeklyBudget', usd: 40 });
+    expect(s.settings.openrouter.weeklyBudgetUsd).toBe(40);
+    expect(s.dirty).toBe(true);
   });
   it('nav resets itemIndex by default but preserves it with keepItem', () => {
     const s = { ...initialState(twoLine()), itemIndex: 1 };

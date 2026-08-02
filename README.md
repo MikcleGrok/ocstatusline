@@ -36,7 +36,7 @@ It reuses ~70% of ccstatusline's concepts (widget engine, Powerline, colors, fle
 ## Features
 
 - **Live, event-driven** — repaints instantly as your session produces tokens, switches model, or changes cost; a periodic tick keeps time-based widgets (session timer) fresh.
-- **Rich widget set** — model, provider, agent/mode, token totals, cost, context length / %, context bar, context window, session timer, git branch / dirty / ahead-behind / changes / SHA, working dir, custom text & symbols.
+- **Rich widget set** — model, provider, agent/mode, token totals, cost, context length / %, context bar, context window, session timer, OpenRouter weekly balance, git branch / dirty / ahead-behind / changes / SHA, working dir, custom text & symbols.
 - **Powerline, colors, flex-width** — named or `#rrggbb` colors (16/256/truecolor), optional Powerline separators, automatic truncation to the terminal width, multi-line layouts.
 - **Interactive config TUI** — compose lines, reorder/recolor widgets, toggle Powerline, manage multiple lines, all with a live preview. Run `ocstatusline` with no arguments.
 - **Two connection modes** — spawn and manage its own `opencode serve` (default), or attach to an already-running server with `--server`.
@@ -242,6 +242,7 @@ Config lives at `~/.config/ocstatusline/settings.json`. It is created on first s
 {
   "refreshInterval": 1000,          // ms between time-based repaints
   "colorLevel": "truecolor",        // "ansi16" | "ansi256" | "truecolor"
+  "openrouter": { "weeklyBudgetUsd": 25 },
   "powerline": {
     "enabled": false,
     "separator": "",               // glyph between segments when enabled
@@ -265,6 +266,7 @@ Config lives at `~/.config/ocstatusline/settings.json`. It is created on first s
 |------|-------|
 | `model` / `provider` / `mode` | Current model id / provider / agent mode |
 | `cost` | Session cost in USD |
+| `openrouter-weekly` | Account balance remaining from the Monday-local weekly budget, plus time until the next window |
 | `tokens` | Total tokens used |
 | `context-length` / `context-percentage` / `context-bar` / `context-window` | Live context occupancy (needs `~/.cache/opencode/models.json`) |
 | `session-timer` | Elapsed session time |
@@ -272,7 +274,7 @@ Config lives at `~/.config/ocstatusline/settings.json`. It is created on first s
 | `cwd` | Working directory basename |
 | `custom-text` / `custom-symbol` | Your own literal text / symbol |
 
-Each widget accepts `color` (a name like `cyan` or a hex like `#88c0d0`) and `bold`. Widgets that have nothing to show (e.g. git outside a repo, context % with no known model) hide themselves automatically.
+Each widget accepts `color` (a name like `cyan` or a hex like `#88c0d0`) and `bold`. `openrouter-weekly` uses fallback thresholds when account data is available: below 10% is dark red, below 25% is yellow, and otherwise its configured color. The OpenCode TUI footer balance uses the same thresholds (red/yellow/gray) and keeps the existing balance, repository, and branch format. Key-limit data is never treated as weekly spend. Widgets that have nothing to show (e.g. git outside a repo, context % with no known model) hide themselves automatically. Its runtime anchor is stored separately at `~/.config/ocstatusline/openrouter-weekly-window.json`.
 
 ---
 
