@@ -1,8 +1,10 @@
 import { createSignal } from 'solid-js';
 import { jsx } from '@opentui/solid/jsx-runtime';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
-import { getTuiGitInfo, formatTuiFooter, gitInfoForRoute, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
-import { fetchOpenRouterBalance } from '../../src/tui/openrouter.js';
+import { getTuiGitInfo, formatTuiFooter, gitInfoForRoute, tuiFooterColor, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
+import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
+import { fetchOpenRouterBalanceWithSource } from '../../src/tui/openrouter.js';
+import { loadSettings } from '../../src/utils/config.js';
 
 const BALANCE_REFRESH_INTERVAL = 60_000;
 const GIT_REFRESH_INTERVAL = 10_000;
@@ -14,7 +16,8 @@ const module: TuiPluginModule = {
   tui: async (api) => {
     const [revision, refresh] = createSignal(0);
     const [currentSnapshot, setCurrentSnapshot] = createSignal<TuiRouteSnapshot>(tuiRouteSnapshot(api.route.current, api.state));
-    let lastBalance: number | null = null;
+    const weeklyBudgetUsd = loadSettings().openrouter.weeklyBudgetUsd;
+    let openrouterWeekly = updateWeeklyState(null, weeklyBudgetUsd, Date.now());
     let lastGit = EMPTY_GIT;
     let gitSessionKey: string | null = null;
     let gitLoadingKey: string | null = null;
@@ -35,9 +38,9 @@ const module: TuiPluginModule = {
       return true;
     };
     const refreshBalance = async () => {
-      const nextBalance = await fetchOpenRouterBalance(3000, balanceController.signal);
+      const nextBalance = await fetchOpenRouterBalanceWithSource(3000, balanceController.signal);
       if (disposed) return;
-      if (nextBalance !== null) lastBalance = nextBalance;
+      openrouterWeekly = updateWeeklyState(nextBalance, weeklyBudgetUsd, Date.now(), openrouterWeekly);
       bump();
     };
     const refreshGit = async (snapshot: TuiRouteSnapshot) => {
@@ -89,8 +92,12 @@ const module: TuiPluginModule = {
         app_bottom: () => {
           revision();
           const snapshot = currentSnapshot();
-          const line = formatTuiFooter(lastBalance, gitInfoForRoute(snapshot.key, gitSessionKey, lastGit));
-          return jsx('box', { paddingLeft: 1, children: jsx('text', { fg: 'gray', children: line }) });
+          const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
+          const line = formatTuiFooter(openrouterWeekly, git);
+          const separatorIndex = line.indexOf(' · ');
+          const balanceText = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
+          const gitText = separatorIndex === -1 ? '' : line.slice(separatorIndex);
+          return jsx('box', { paddingLeft: 1, children: [jsx('text', { fg: tuiFooterColor(openrouterWeekly), children: balanceText }), jsx('text', { fg: 'gray', children: gitText })] });
         },
       },
     });

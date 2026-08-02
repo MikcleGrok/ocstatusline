@@ -9,7 +9,9 @@ function ctx(over: Partial<RenderContext> = {}): RenderContext {
     derived: { model: 'qwen3-coder', provider: 'ollama', mode: 'build', cwd: '/home/u/proj',
       totalTokens: 1234, contextTokens: 6553, contextLimit: 65536, cost: 0.042, sessionDurationMs: 192000 },
     git: { isRepo: true, branch: 'main', dirty: true, ahead: 2, behind: 0, changes: 3, sha: 'abcdef1' },
-    termWidth: 120, now: 0, ...over,
+    termWidth: 120, now: 0,
+    openrouterWeekly: { source: null, balanceUsd: null, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 0 },
+    ...over,
   };
 }
 
@@ -52,5 +54,23 @@ describe('widgets', () => {
   });
   it('custom-text echoes its text', () => {
     expect(WIDGETS['custom-text'].render(ctx(), { type: 'custom-text', text: 'hi' })).toBe('hi');
+  });
+  it('formats the weekly balance and countdown only for account source', () => {
+    const c = ctx({ now: 0, openrouterWeekly: { source: 'account', balanceUsd: 10, budgetUsd: 25, spentUsd: 15, remainingUsd: 10, windowStartMs: 0, windowEndMs: 4 * 86400000 + 2 * 3600000 } });
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$10.00 4d2h');
+    c.openrouterWeekly = { ...c.openrouterWeekly, source: 'key-limit' };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+  });
+  it('formats the countdown boundaries', () => {
+    const c = ctx({ now: 0, openrouterWeekly: { source: 'account', balanceUsd: 1, budgetUsd: 25, spentUsd: 24, remainingUsd: 1, windowStartMs: 0, windowEndMs: 45 * 60000 } });
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$1.00 45m');
+    c.openrouterWeekly = { ...c.openrouterWeekly, windowEndMs: 0 };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$1.00 now');
+  });
+  it('uses an unambiguous countdown for a positive remainder under one minute', () => {
+    const c = ctx({ now: 0, openrouterWeekly: { source: 'account', balanceUsd: 1, budgetUsd: 25, spentUsd: 24, remainingUsd: 1, windowStartMs: 0, windowEndMs: 59999 } });
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$1.00 now');
+    c.openrouterWeekly = { ...c.openrouterWeekly, windowEndMs: 60000 };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$1.00 1m');
   });
 });

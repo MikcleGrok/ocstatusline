@@ -15,4 +15,9 @@ describe('config', () => {
     expect(merged.lines.length).toBeGreaterThan(0);
     expect(merged.powerline).toBeDefined();
   });
+  it('uses and validates the weekly OpenRouter budget', () => {
+    expect(mergeSettings({ openrouter: { weeklyBudgetUsd: 10 } } as any).openrouter.weeklyBudgetUsd).toBe(10);
+    expect(mergeSettings({ openrouter: { weeklyBudgetUsd: Number.NaN } } as any).openrouter.weeklyBudgetUsd).toBe(25);
+    expect(mergeSettings({ openrouter: { weeklyBudgetUsd: 0 } } as any).openrouter.weeklyBudgetUsd).toBe(25);
+  });
 });

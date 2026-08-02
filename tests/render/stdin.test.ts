@@ -6,6 +6,7 @@ import type { Settings } from '../../src/types';
 
 const plainSettings: Settings = {
   refreshInterval: 1000, colorLevel: 'truecolor', powerline: { enabled: false, separator: '', separatorReverse: '' },
+  openrouter: { weeklyBudgetUsd: 25 },
   lines: [[{ type: 'custom-text', text: 'safe' }, { type: 'separator' }, { type: 'custom-symbol', symbol: '★' }]],
 };
 

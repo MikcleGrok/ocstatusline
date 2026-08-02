@@ -12,6 +12,7 @@ export function defaultSettings(): Settings {
     refreshInterval: 1000,
     colorLevel: 'truecolor',
     powerline: { enabled: false, separator: '', separatorReverse: '' },
+    openrouter: { weeklyBudgetUsd: 25 },
     lines: [[
       { type: 'model', color: 'cyan', bold: true },
       { type: 'separator' },
@@ -28,10 +29,12 @@ export function defaultSettings(): Settings {
 
 export function mergeSettings(partial: Partial<Settings>): Settings {
   const d = defaultSettings();
+  const budget = partial.openrouter?.weeklyBudgetUsd;
   return {
     refreshInterval: partial.refreshInterval ?? d.refreshInterval,
     colorLevel: partial.colorLevel ?? d.colorLevel,
     powerline: { ...d.powerline, ...(partial.powerline ?? {}) },
+    openrouter: { weeklyBudgetUsd: typeof budget === 'number' && Number.isFinite(budget) && budget > 0 ? budget : d.openrouter.weeklyBudgetUsd },
     lines: partial.lines && partial.lines.length ? partial.lines : d.lines,
   };
 }

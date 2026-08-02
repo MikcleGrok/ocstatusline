@@ -3,6 +3,7 @@ import { WIDGETS } from '../widgets/index.js';
 import { colorize } from './colors.js';
 import { joinPlain, joinPowerline } from './powerline.js';
 import { fitWidth } from './flex.js';
+import { weeklyBalanceSeverity } from '../data/openrouter-weekly.js';
 
 const DEFAULT_SEP = ' · ';
 
@@ -11,7 +12,9 @@ function renderWidget(ctx: RenderContext, cfg: WidgetConfig, settings: Settings)
   if (!w) return null;
   const raw = w.render(ctx, cfg);
   if (raw === null || raw === '') return null;
-  return colorize(raw, { color: cfg.color, bold: cfg.bold }, settings.colorLevel);
+  const severity = cfg.type === 'openrouter-weekly' ? weeklyBalanceSeverity(ctx.openrouterWeekly) : 'normal';
+  const dynamic = cfg.type === 'openrouter-weekly' ? (severity === 'critical' ? 124 : severity === 'warning' ? 33 : undefined) : undefined;
+  return colorize(raw, { color: dynamic ?? cfg.color, bold: cfg.bold }, settings.colorLevel);
 }
 
 export function renderLine(ctx: RenderContext, line: WidgetConfig[], settings: Settings): string {
