@@ -95,8 +95,8 @@ const module: TuiPluginModule = {
            const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
            const segments = formatTuiFooterSegments(openrouterWeekly, git);
            const [weekly, repository, account] = segments;
-           const region = (segment: (typeof segments)[number] | undefined, align: 'left' | 'center' | 'right', withSeparator: boolean) => segment ? jsx('box', { flexGrow: 1, justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start', children: [withSeparator ? jsx('text', { fg: 'gray', children: ' · ' }) : null, jsx('text', { fg: segment.color, children: segment.text })] }) : null;
-           return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', children: [region(weekly, 'left', false), region(repository, 'center', true), region(account, 'right', true)] });
+            const region = (segment: (typeof segments)[number] | undefined, align: 'left' | 'center' | 'right', withSeparator: boolean) => segment ? jsx('box', { flexGrow: align === 'center' ? 1 : 0, flexShrink: align === 'center' ? 1 : 0, overflow: 'hidden', justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start', children: [withSeparator ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' }) : null, jsx('text', { fg: segment.color, wrapMode: 'none', children: segment.text })] }) : null;
+            return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden', children: [region(weekly, 'left', false), region(repository, 'center', true), region(account, 'right', true)] });
          },
       },
     });
