@@ -1,4 +1,4 @@
-export type CliMode = 'tui' | 'daemon' | 'stdin-render' | 'version' | 'help' | 'error';
+export type CliMode = 'tui' | 'daemon' | 'stdin-render' | 'version' | 'help' | 'error' | 'install';
 
 export interface CliCommand {
   mode: CliMode;
@@ -15,6 +15,7 @@ export function parseCli(argv: string[]): CliCommand {
   }
   if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') return { mode: 'help' };
   if (argv.includes('--version') || argv[0] === 'version') return { mode: 'version' };
+  if (argv[0] === 'install') return { mode: 'install' };
   if (argv[0] === 'start') {
     const i = argv.indexOf('--server');
     const serverUrl = i >= 0 && i < argv.length - 1 ? argv[i + 1] : undefined;

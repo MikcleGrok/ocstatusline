@@ -30,6 +30,9 @@ describe('parseCli', () => {
   it('rejects render --stdin=value', () => {
     expect(parseCli(['render', '--stdin=snapshot.json'])).toEqual({ mode: 'error', error: 'render requires exactly --stdin' });
   });
+  it('install → install mode', () => {
+    expect(parseCli(['install'])).toEqual({ mode: 'install' });
+  });
   it('--help → help mode', () => {
     expect(parseCli(['--help'])).toEqual({ mode: 'help' });
   });
