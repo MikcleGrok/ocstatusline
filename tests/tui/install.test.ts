@@ -93,6 +93,14 @@ describe('runTuiInstall file copy', () => {
     }
   });
 
+  it('keeps the footer regions on one non-wrapping row', () => {
+    const pluginSource = readFileSync(join(REPO_ROOT, '.opencode/tui-plugins/ocstatusline.ts'), 'utf-8');
+    expect(pluginSource).toContain("width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden'");
+    expect(pluginSource).toContain("flexGrow: align === 'center' ? 1 : 0, flexShrink: align === 'center' ? 1 : 0, overflow: 'hidden'");
+    expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
+    expect(pluginSource).toContain("fg: segment.color, wrapMode: 'none', children: segment.text");
+  });
+
   it('does not run npm install when skipNpmInstall is set', async () => {
     const result = await install();
     expect(result.npmInstallRan).toBe(false);
