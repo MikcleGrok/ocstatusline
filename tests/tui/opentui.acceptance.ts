@@ -1,31 +1,68 @@
 #!/usr/bin/env bun
 
 import { strict as assert } from 'node:assert';
+import { execFileSync } from 'node:child_process';
 import { createServer, type Server } from 'node:net';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 type Slot = () => unknown;
 type AcceptanceSpan = { text: string; fg: { buffer: Uint16Array } };
 type AcceptanceSetup = {
-  renderer: { destroy: () => void };
+  renderer: { destroy: () => void; getSchedulerState: () => { isRunning: boolean; isRendering: boolean; hasScheduledRender: boolean } };
   renderOnce: () => Promise<void>;
-  flush: () => Promise<void>;
+  flush: (options?: { maxPasses?: number }) => Promise<void>;
   captureCharFrame: () => string;
-  waitForFrame: (predicate: (value: string) => boolean, options: { maxPasses: number }) => Promise<void>;
   captureSpans: () => { lines: Array<{ spans: AcceptanceSpan[] }> };
   getNativeStats: () => { nativeFrameCount: number };
 };
 type TestRender = (render: () => unknown, options: { width: number; height: number; footerHeight?: number }) => Promise<AcceptanceSetup>;
+type NativeCapture = {
+  frame: string;
+  spans: AcceptanceSpan[];
+  nativeFrameCount: number;
+};
 
-async function waitForNativeFrame(setup: AcceptanceSetup, predicate: (value: string) => boolean, maxPasses: number): Promise<void> {
-  for (let pass = 0; pass < maxPasses; pass += 1) {
+function captureNativeFrame(setup: AcceptanceSetup): NativeCapture {
+  return {
+    frame: setup.captureCharFrame(),
+    spans: setup.captureSpans().lines.flatMap((line) => line.spans),
+    nativeFrameCount: setup.getNativeStats().nativeFrameCount,
+  };
+}
+
+function readGitValue(args: string[]): string {
+  return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+}
+
+function expectedCheckoutIdentity(): { repo: string; ref: string } {
+  const root = readGitValue(['rev-parse', '--show-toplevel']);
+  const branch = readGitValue(['branch', '--show-current']);
+  if (branch) return { repo: basename(root), ref: branch };
+  const commit = readGitValue(['rev-parse', '--short', 'HEAD']);
+  const githubRef = process.env.GITHUB_REF_NAME?.trim();
+  return { repo: basename(root), ref: commit || githubRef || 'HEAD' };
+}
+
+function isVisualIdleTimeout(error: unknown): boolean {
+  return error instanceof Error && /^Timed out waiting for visual idle after \d+ frames\n/.test(error.message);
+}
+
+async function waitForNativeFrame(setup: AcceptanceSetup, predicate: (capture: NativeCapture) => boolean, timeoutMs: number): Promise<NativeCapture> {
+  const deadline = Date.now() + timeoutMs;
+  let capture = captureNativeFrame(setup);
+  while (Date.now() < deadline) {
     await setup.renderOnce();
-    await setup.flush();
-    if (predicate(setup.captureCharFrame())) return;
+    try {
+      await setup.flush({ maxPasses: 8 });
+    } catch (error: unknown) {
+      if (!isVisualIdleTimeout(error)) throw error;
+    }
+    capture = captureNativeFrame(setup);
+    if (capture.nativeFrameCount > 0 && capture.spans.some((span) => span.text.trim().length > 0) && predicate(capture)) return capture;
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
-  await setup.waitForFrame(predicate, { maxPasses: 1 });
+  throw new Error(`Timed out waiting for committed native spans after ${timeoutMs}ms: ${JSON.stringify({ nativeFrameCount: capture.nativeFrameCount, scheduler: setup.renderer.getSchedulerState(), spans: capture.spans.map((span) => span.text), frame: capture.frame })}`);
 }
 
 if (!process.env.OCSTATUSLINE_ACCEPTANCE_HOME) {
@@ -90,18 +127,22 @@ async function main(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const setup = await testRender(() => appBottom!(), { width: 120, height: 4, footerHeight: 1 });
     renderer = setup.renderer;
-     await waitForNativeFrame(setup, (value) => value.includes('$25.00') && value.includes('$10') && /(?:src|ocstatusline) · acceptance-tui/.test(value), 300);
-    const frame = setup.captureCharFrame();
-    const captured = setup.captureSpans();
-    const spans = captured.lines.flatMap((line) => line.spans).map((span) => span.text).join('');
-    const weeklySpan = captured.lines[0]?.spans.find((span) => span.text === '$25.00');
-    const accountSpan = captured.lines[0]?.spans.find((span) => span.text === '$10');
+    const expected = expectedCheckoutIdentity();
+    const expectedRepository = `${expected.repo} · ${expected.ref}`;
+    const capture = await waitForNativeFrame(setup, ({ frame, spans }) => {
+      const spanText = spans.map((span) => span.text).join('');
+      return frame.includes('$25.00') && frame.includes('$10') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes(expectedRepository);
+    }, 10_000);
+    const { frame, spans } = capture;
+    const spanText = spans.map((span) => span.text).join('');
+    const weeklySpan = spans.find((span) => span.text === '$25.00');
+    const accountSpan = spans.find((span) => span.text === '$10');
     assert.match(frame, /\$25\.00/);
-    assert.match(frame, /(?:src|ocstatusline) · acceptance-tui/);
+    assert.ok(frame.includes(expectedRepository), `footer did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(frame, /\$10/);
-    assert.match(spans, /\$25\.00/);
-    assert.match(spans, /(?:src|ocstatusline) · acceptance-tui/);
-    assert.match(spans, /\$10/);
+    assert.match(spanText, /\$25\.00/);
+    assert.ok(spanText.includes(expectedRepository), `native spans did not contain expected repository/ref: ${expectedRepository}`);
+    assert.match(spanText, /\$10/);
     assert.ok(weeklySpan && weeklySpan.fg.buffer instanceof Uint16Array, 'weekly footer did not use native fg');
     assert.ok(accountSpan && accountSpan.fg.buffer instanceof Uint16Array, 'account footer did not use native fg');
     assert.notEqual(weeklySpan.fg.buffer[0], 128, 'weekly footer stayed gray');
