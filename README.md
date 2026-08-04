@@ -316,6 +316,7 @@ Config lives at `~/.config/ocstatusline/settings.json`. It is created on first s
   "lines": [                        // one array of widgets per status line
     [
       { "type": "model", "color": "cyan", "bold": true },
+      { "type": "mode", "color": "cyan" },
       { "type": "git-branch", "color": "magenta" },
       { "type": "context-percentage", "color": "yellow" },
       { "type": "cost", "color": "green" },

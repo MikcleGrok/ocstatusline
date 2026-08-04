@@ -25,7 +25,7 @@ describe('normalizeLine', () => {
 describe('golden rendering', () => {
   it('renders the default settings to the documented representative line', () => {
     const [line] = renderLines(mockContext(), defaultSettings());
-    expect(normalizeLine(line)).toBe('qwen3-coder · main* · ctx 42% · $0.12 · <timer>');
+    expect(normalizeLine(line)).toBe('qwen3-coder · build · main* · ctx 42% · $0.12 · <timer>');
   });
 
   it('renders the same line byte-for-byte on a repeat render', () => {
