@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { mondayStartMs, updateWeeklyState, weeklyBalanceSeverity } from '../../src/data/openrouter-weekly';
+import { accountBalanceSeverity, mondayStartMs, updateWeeklyState, weeklyBalanceSeverity } from '../../src/data/openrouter-weekly';
 
 describe('OpenRouter weekly window', () => {
-  it('uses the shared fallback thresholds only for account state', () => {
+  it('uses five remaining-budget color levels only for account state', () => {
     const account = { source: 'account' as const, budgetUsd: 25, remainingUsd: 2 };
-    expect(weeklyBalanceSeverity(account)).toBe('critical');
-    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 5 })).toBe('warning');
-    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 20 })).toBe('normal');
-    expect(weeklyBalanceSeverity({ ...account, source: 'key-limit', remainingUsd: 1 })).toBe('normal');
+    expect(weeklyBalanceSeverity(account)).toBe('dark-red');
+    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 5 })).toBe('orange');
+    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 10 })).toBe('muted-green');
+    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 15 })).toBe('teal');
+    expect(weeklyBalanceSeverity({ ...account, remainingUsd: 20 })).toBe('sky-blue');
+    expect(weeklyBalanceSeverity({ ...account, source: 'key-limit', remainingUsd: 1 })).toBe('neutral');
+  });
+
+  it('classifies the full account balance against the weekly budget', () => {
+    const account = { source: 'account' as const, budgetUsd: 25, balanceUsd: 25 };
+    expect(accountBalanceSeverity(account)).toBe('sky-blue');
+    expect(accountBalanceSeverity({ ...account, balanceUsd: 10 })).toBe('muted-green');
+    expect(accountBalanceSeverity({ ...account, balanceUsd: 2 })).toBe('dark-red');
+    expect(accountBalanceSeverity({ ...account, source: 'key-limit' })).toBe('neutral');
+    expect(accountBalanceSeverity({ ...account, balanceUsd: null })).toBe('neutral');
   });
   it('starts at local Monday midnight and ends next Monday', () => {
     const now = new Date(2026, 5, 17, 14, 30).getTime();
