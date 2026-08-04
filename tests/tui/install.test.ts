@@ -97,11 +97,11 @@ describe('runTuiInstall file copy', () => {
     const pluginSource = readFileSync(join(REPO_ROOT, '.opencode/tui-plugins/ocstatusline.ts'), 'utf-8');
     expect(pluginSource).toContain("width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden'");
     expect(pluginSource).not.toContain("jsx('box', { flexGrow");
-    expect(pluginSource).toContain("fg: weekly.color, wrapMode: 'none', children: weekly.text");
+    expect(pluginSource).toContain("fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
     expect(pluginSource).toContain("fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · '");
-    expect(pluginSource).toContain("fg: account.color, wrapMode: 'none', children: account.text");
+    expect(pluginSource).toContain("fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text");
   });
 
   it('does not run npm install when skipNpmInstall is set', async () => {
@@ -407,6 +407,14 @@ describe('embedded plugin assets, as generated', () => {
     const expected = renderEmbeddedPluginAssetsModule(collectEmbeddedPluginAssets(REPO_ROOT));
     const committed = readFileSync(join(REPO_ROOT, GENERATED_FILE_RELATIVE), 'utf-8');
     expect(committed, `${GENERATED_FILE_RELATIVE} is stale -- run \`make generate-tui-plugin-assets\``).toBe(expected);
+  });
+
+  it('embeds the OpenTUI-safe color adapter in the standalone plugin asset', () => {
+    const entry = PLUGIN_ASSET_FILES.find((asset) => asset.relativePath === 'tui-plugins/ocstatusline.ts');
+    expect(entry?.content).toContain("import { RGBA } from '@opentui/core';");
+    expect(entry?.content).toContain('return typeof color === \'number\' ? RGBA.fromIndex(color) : color;');
+    expect(entry?.content).toContain('fg: tuiTextColor(weekly.color)');
+    expect(entry?.content).toContain('fg: tuiTextColor(account.color)');
   });
 
   it('carries the plugin entry with its imports already rewritten for configDir', () => {

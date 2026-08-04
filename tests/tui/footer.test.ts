@@ -19,17 +19,24 @@ describe('TUI footer', () => {
 
   it('colors the footer balance from the account weekly remaining percentage', () => {
     const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
-    expect(tuiFooterColor(weekly)).toBe('red');
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 5 })).toBe('yellow');
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 20 })).toBe('green');
+    expect(tuiFooterColor(weekly)).toBe(124);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 5 })).toBe(208);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 10 })).toBe(71);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 15 })).toBe(37);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 20 })).toBe(75);
+  });
+
+  it('keeps the complete formatter ANSI-256 palette stable', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
+    expect([2, 5, 10, 15, 20].map((remainingUsd) => tuiFooterColor({ ...weekly, remainingUsd }))).toEqual([124, 208, 71, 37, 75]);
   });
 
   it('formats weekly remaining and full account balance as separate segments', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.46844, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
     expect(formatTuiFooterSegments(weekly, git)).toEqual([
-      { text: '$25.00', color: 'green' },
+      { text: '$25.00', color: 75 },
       { text: 'sender · DEV-15309', color: 'gray' },
-      { text: '$49', color: 'gray' },
+      { text: '$49', color: 75 },
     ]);
     expect(formatTuiFooterSegments(weekly, git).map((segment) => segment.text).join(' · ')).not.toContain('\n');
     expect(formatTuiFooterSegments(weekly, git).map((segment) => segment.text)).not.toContain('total $49');
@@ -37,7 +44,7 @@ describe('TUI footer', () => {
 
   it('rounds the account balance to the nearest whole dollar', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.5, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
-    expect(formatTuiFooterSegments(weekly, git)[2]).toEqual({ text: '$50', color: 'gray' });
+    expect(formatTuiFooterSegments(weekly, git)[2]).toEqual({ text: '$50', color: 75 });
   });
 
   it('does not color key-limit or unavailable balances as weekly alerts', () => {
