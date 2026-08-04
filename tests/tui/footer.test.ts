@@ -26,6 +26,11 @@ describe('TUI footer', () => {
     expect(tuiFooterColor({ ...weekly, remainingUsd: 20 })).toBe(75);
   });
 
+  it('keeps the complete formatter ANSI-256 palette stable', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
+    expect([2, 5, 10, 15, 20].map((remainingUsd) => tuiFooterColor({ ...weekly, remainingUsd }))).toEqual([124, 208, 71, 37, 75]);
+  });
+
   it('formats weekly remaining and full account balance as separate segments', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.46844, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
     expect(formatTuiFooterSegments(weekly, git)).toEqual([

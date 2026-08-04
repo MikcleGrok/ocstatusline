@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import { jsx } from '@opentui/solid/jsx-runtime';
+import { RGBA } from '@opentui/core';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
 import { formatTuiFooterSegments, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
@@ -10,6 +11,10 @@ const BALANCE_REFRESH_INTERVAL = 60_000;
 const GIT_REFRESH_INTERVAL = 10_000;
 const ROUTE_POLL_INTERVAL = 100;
 const EMPTY_GIT: TuiGitInfo = { isRepo: false, root: null, branch: null };
+
+export function tuiTextColor(color: 'gray' | number): string | RGBA {
+  return typeof color === 'number' ? RGBA.fromIndex(color) : color;
+}
 
 const module: TuiPluginModule = {
   id: 'ocstatusline',
@@ -96,11 +101,11 @@ const module: TuiPluginModule = {
             const segments = formatTuiFooterSegments(openrouterWeekly, git);
             const [weekly, repository, account] = segments;
             return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden', children: [
-              weekly ? jsx('text', { fg: weekly.color, wrapMode: 'none', children: weekly.text }) : null,
+              weekly ? jsx('text', { fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text }) : null,
               repository ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' }) : null,
               repository ? jsx('text', { fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text }) : null,
               account ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' }) : null,
-              account ? jsx('text', { fg: account.color, wrapMode: 'none', children: account.text }) : null,
+              account ? jsx('text', { fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text }) : null,
             ] });
           },
       },
