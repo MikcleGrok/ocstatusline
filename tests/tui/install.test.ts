@@ -63,6 +63,7 @@ describe('runTuiInstall file copy', () => {
       'src/tui/openrouter.ts',
       'src/data/git.ts',
       'src/data/openrouter-weekly.ts',
+      'src/data/project-status.ts',
       'src/types/index.ts',
       'src/utils/config.ts',
     ];
@@ -100,8 +101,21 @@ describe('runTuiInstall file copy', () => {
     expect(pluginSource).toContain("fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
     expect(pluginSource).toContain("fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text");
-    expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · '");
+    expect(pluginSource).toContain("modelCost ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' })");
     expect(pluginSource).toContain("fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text");
+    expect(pluginSource).toContain('const modelCost = currentModelCost(api);');
+    expect(pluginSource).toContain("children: modelCost.text");
+    expect(pluginSource).toContain("account ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })");
+    expect(pluginSource.indexOf("children: modelCost.text")).toBeLessThan(pluginSource.indexOf("account ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })"));
+  });
+
+  it('refreshes project status for the same route without reading in the render callback', () => {
+    const pluginSource = readFileSync(join(REPO_ROOT, '.opencode/tui-plugins/ocstatusline.ts'), 'utf-8');
+    expect(pluginSource).toContain('const STATUS_REFRESH_INTERVAL = 2_000;');
+    expect(pluginSource).toContain('setInterval(() => void refreshStatus(currentSnapshot()), STATUS_REFRESH_INTERVAL)');
+    expect(pluginSource).not.toContain('statusSessionKey === snapshot.key');
+    expect(pluginSource).toContain('if (statusController === controller) statusController = null;');
+    expect(pluginSource).not.toMatch(/app_bottom:[\s\S]*readProjectStatus/);
   });
 
   it('does not run npm install when skipNpmInstall is set', async () => {
@@ -321,7 +335,7 @@ describe('resolveConfigDir', () => {
   });
 });
 
-const CLOSURE_RELATIVE_PATHS = ['src/tui/footer.ts', 'src/tui/openrouter.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/types/index.ts', 'src/utils/config.ts'];
+const CLOSURE_RELATIVE_PATHS = ['src/tui/footer.ts', 'src/tui/openrouter.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/data/project-status.ts', 'src/types/index.ts', 'src/utils/config.ts'];
 
 describe('runTuiInstall embedded (standalone-binary) mode', () => {
   it('writes the same file closure as the disk mode, without any repo checkout', async () => {

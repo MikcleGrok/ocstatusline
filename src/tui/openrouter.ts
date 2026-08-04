@@ -7,6 +7,7 @@ import { createConnection } from 'node:net';
 // single JSON object terminated by '\n'.
 const DEFAULT_TIMEOUT_MS = 3000;
 const CREDITS_MODULE = 'openrouter/credits';
+const USAGE_MODULE = 'openrouter/usage';
 const KEY_LIMIT_MODULE = 'openrouter/key-limit';
 
 export function secretdSocketPath(): string {
@@ -21,6 +22,13 @@ interface SecretdCallResult {
 export interface OpenRouterBalance {
   source: 'account' | 'key-limit';
   balanceUsd: number;
+}
+
+export async function fetchOpenRouterUsage(timeoutMs: number = DEFAULT_TIMEOUT_MS, signal?: AbortSignal, socketPath: string = secretdSocketPath()): Promise<number | null> {
+  if (signal?.aborted) return null;
+  const result = await callSecretdModule(socketPath, USAGE_MODULE, timeoutMs, signal);
+  if (!result || !result.ok) return null;
+  return finiteNumber(result.result);
 }
 
 function finiteNumber(value: unknown): number | null {

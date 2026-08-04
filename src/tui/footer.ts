@@ -39,6 +39,36 @@ export interface TuiFooterSegment {
   color: 'gray' | number;
 }
 
+function finiteNonNegative(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+export function formatTuiModelCost(model: unknown): TuiFooterSegment | null {
+  if (!model || typeof model !== 'object') return null;
+  const cost = (model as { cost?: unknown }).cost;
+  if (!cost || typeof cost !== 'object') return null;
+  const prices = cost as { input?: unknown; output?: unknown; cache_read?: unknown; cache_write?: unknown; cache?: { read?: unknown; write?: unknown }; experimentalOver200K?: unknown };
+  const formatPrices = (value: unknown): string | null => {
+    if (!value || typeof value !== 'object') return null;
+    const tier = value as { input?: unknown; output?: unknown; cache_read?: unknown; cache_write?: unknown; cache?: { read?: unknown; write?: unknown } };
+    const input = finiteNonNegative(tier.input);
+    const output = finiteNonNegative(tier.output);
+    const cacheRead = finiteNonNegative(tier.cache_read ?? tier.cache?.read);
+    const cacheWrite = finiteNonNegative(tier.cache_write ?? tier.cache?.write);
+    if (input === null || output === null || cacheRead === null || cacheWrite === null) return null;
+    return `in ${input} · out ${output} · read ${cacheRead} · write ${cacheWrite}`;
+  };
+  const base = formatPrices(prices);
+  if (!base) return null;
+  const over200K = formatPrices(prices.experimentalOver200K);
+  const parts = [base ? `base ${base}` : null, over200K ? `>200K ${over200K}` : null].filter((part): part is string => part !== null);
+  return { text: `$/1M ${parts.join(' · ')}`, color: 'gray' };
+}
+
+export function formatTuiProductionVersion(version: string | null): TuiFooterSegment | null {
+  return version ? { text: `prod ${version}`, color: 'gray' } : null;
+}
+
 function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRouterWeeklyContext & { source: 'account' } {
   return typeof balance === 'object' && balance !== null && balance.source === 'account' && Number.isFinite(balance.remainingUsd) && Number.isFinite(balance.budgetUsd) && Number.isFinite(balance.spentUsd) && Number.isFinite(balance.windowStartMs) && Number.isFinite(balance.windowEndMs);
 }
@@ -59,7 +89,7 @@ export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number): 'gray
   return severityColor(weeklyBalanceSeverity(balance, nowMs));
 }
 
-export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number): TuiFooterSegment[] {
+export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null): TuiFooterSegment[] {
   if (!git.isRepo || !git.root || !git.branch) return [];
   const value = footerBalanceValue(balance);
   const weeklyText = value === null ? '?' : `$${value.toFixed(2)}`;
@@ -70,6 +100,8 @@ export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitIn
   if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null && Number.isFinite(balance.balanceUsd)) {
     segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance)) });
   }
+  const production = formatTuiProductionVersion(productionVersion);
+  if (production) segments.push(production);
   return segments;
 }
 

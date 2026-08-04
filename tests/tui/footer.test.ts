@@ -1,8 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { formatTuiFooter, formatTuiFooterSegments, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiFooterColor, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooter, formatTuiFooterSegments, formatTuiModelCost, formatTuiProductionVersion, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiFooterColor, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
 
 describe('TUI footer', () => {
   const git = { isRepo: true, root: '/work/sender', branch: 'DEV-15309' };
+
+  it('formats model tariffs with an explicit per-million-token unit', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache_read: 0.02, cache_write: 0.3 } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
+  });
+
+  it('shows the base and experimental over-200K tariffs explicitly', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3 · >200K in 0.3 · out 1.2 · read 0.04 · write 0.6', color: 'gray' });
+  });
+
+  it('hides missing or invalid model tariffs', () => {
+    expect(formatTuiModelCost(null)).toBeNull();
+    expect(formatTuiModelCost({ cost: { input: Number.NaN, output: -1 } })).toBeNull();
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: Number.POSITIVE_INFINITY } })).toBeNull();
+  });
+
+  it('hides an incomplete experimental tier without hiding a complete base tariff', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04 } } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
+  });
+
+  it('hides the complete model tariff when the base tier is incomplete', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } } })).toBeNull();
+  });
 
   it('formats the exact custom line from the git root basename and branch', () => {
     expect(formatTuiFooter(47.78, git)).toBe('$47.78 · sender · DEV-15309');
@@ -10,6 +33,12 @@ describe('TUI footer', () => {
 
   it('uses ? for an unavailable balance', () => {
     expect(formatTuiFooter(null, git)).toBe('? · sender · DEV-15309');
+  });
+  it('formats production version as a separate footer segment', () => {
+    expect(formatTuiProductionVersion('2026.08.04')).toEqual({ text: 'prod 2026.08.04', color: 'gray' });
+    expect(formatTuiFooterSegments(null, git, undefined, '2026.08.04')).toEqual([
+      { text: '?', color: 'gray' }, { text: 'sender · DEV-15309', color: 'gray' }, { text: 'prod 2026.08.04', color: 'gray' },
+    ]);
   });
 
   it('uses ? for non-finite balances before formatting', () => {
