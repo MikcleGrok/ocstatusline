@@ -8,7 +8,7 @@ import { stripAnsi } from '../../src/render/ansi';
 describe('mockContext', () => {
   it('renders the default settings to the representative line', () => {
     const [line] = renderLines(mockContext(), defaultSettings());
-    expect(stripAnsi(line)).toBe('qwen3-coder · main* · ctx 42% · $0.12 · 3m12s');
+    expect(stripAnsi(line)).toBe('qwen3-coder · build · main* · ctx 42% · $0.12 · 3m12s');
   });
 });
 
