@@ -98,7 +98,7 @@ const module: TuiPluginModule = {
           revision();
             const snapshot = currentSnapshot();
             const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
-            const segments = formatTuiFooterSegments(openrouterWeekly, git);
+            const segments = formatTuiFooterSegments(openrouterWeekly, git, Date.now());
             const [weekly, repository, account] = segments;
             return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden', children: [
               weekly ? jsx('text', { fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text }) : null,

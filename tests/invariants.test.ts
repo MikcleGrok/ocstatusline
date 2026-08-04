@@ -136,4 +136,16 @@ describe('install invariants', () => {
     expect(workflowEnv(releaseJob).join('\n')).toMatch(/^\s+CI:\s*true\s*$/m);
     expect(releaseJob).toMatch(/^\s+- name: Build every target, run the gates, write the manifest\s*$[\s\S]*?^\s+run: make release\s*$/m);
   });
+
+  it('runs the native TUI acceptance gate from the .opencode module cwd before smoke and artifacts', () => {
+    const acceptanceRecipe = makeRecipe(makefile, 'acceptance-tui');
+    expect(acceptanceRecipe.some((line) => line.includes('timeout --foreground --kill-after='))).toBe(true);
+    expect(makefile).toContain('$(DC) run --rm --no-deps --workdir /src/.opencode test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts');
+    expect(makefile).toContain('OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline');
+    expect(makefile).toMatch(/ci-test:[^\n]*\bacceptance-tui\b[^\n]*\btest\b[^\n]*\bsmoke\b/);
+    const releaseRecipe = makeRecipe(makefile, 'release');
+    expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeGreaterThanOrEqual(0);
+    expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) smoke'));
+    expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) build-all'));
+  });
 });

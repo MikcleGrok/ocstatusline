@@ -32,7 +32,11 @@ const widgets: Widget[] = [
   { type: 'provider', label: 'Provider', render: (c) => c.derived.provider },
   { type: 'mode', label: 'Agent/Mode', render: (c) => c.derived.mode },
   { type: 'cost', label: 'Cost', render: (c) => c.derived.cost > 0 ? `$${c.derived.cost.toFixed(2)}` : '$0.00' },
-  { type: 'openrouter-weekly', label: 'OpenRouter Weekly', render: (c) => c.openrouterWeekly.source === 'account' ? `$${c.openrouterWeekly.remainingUsd.toFixed(2)} ${fmtCountdown(c.openrouterWeekly.windowEndMs - c.now)}` : null },
+  { type: 'openrouter-weekly', label: 'OpenRouter Weekly', render: (c) => {
+    const weekly = c.openrouterWeekly;
+    if (weekly.source !== 'account' || !Number.isFinite(weekly.remainingUsd) || !Number.isFinite(weekly.windowEndMs) || !Number.isFinite(c.now)) return null;
+    return `$${weekly.remainingUsd.toFixed(2)} ${fmtCountdown(weekly.windowEndMs - c.now)}`;
+  } },
   { type: 'tokens', label: 'Tokens (total)', render: (c) => fmtK(c.derived.totalTokens) },
   { type: 'context-length', label: 'Context Length', render: (c) => fmtK(c.derived.contextTokens) },
   {
