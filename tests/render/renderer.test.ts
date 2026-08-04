@@ -3,6 +3,7 @@ import { renderLines } from '../../src/render/renderer';
 import type { RenderContext, Settings } from '../../src/types/index';
 import { emptyState } from '../../src/types/index';
 import { stripAnsi } from '../../src/render/ansi';
+import { defaultSettings } from '../../src/utils/config';
 
 function ctx(): RenderContext {
   return {
@@ -29,6 +30,14 @@ describe('renderLines', () => {
   it('renders a single line with separators, hidden widgets collapsed', () => {
     const [line] = renderLines(ctx(), settings);
     expect(stripAnsi(line)).toBe('qwen3-coder · main · ctx 10% · $0.04');
+  });
+  it('renders mode in the default status line and hides it when unavailable', () => {
+    const defaultLine = stripAnsi(renderLines(ctx(), defaultSettings())[0]);
+    expect(defaultLine).toContain('build');
+
+    const missingMode = ctx();
+    missingMode.derived.mode = null;
+    expect(stripAnsi(renderLines(missingMode, defaultSettings())[0])).not.toContain('build');
   });
   it('omits empty widgets and their separators', () => {
     const c = ctx(); c.git.isRepo = false; // git-branch hidden

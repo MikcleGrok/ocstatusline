@@ -26,8 +26,10 @@ describe('App smoke', () => {
     await delay(30);
     stdin.write('\r'); await delay(20);   // Enter "Edit line items" -> items screen
     stdin.write(DOWN); await delay(10);   // item 1 (separator)
-    stdin.write(DOWN); await delay(10);   // item 2 (git-branch)
-    stdin.write('e'); await delay(20);    // open ColorMenu (keepItem preserves index 2)
+    stdin.write(DOWN); await delay(10);   // item 2 (mode)
+    stdin.write(DOWN); await delay(10);   // item 3 (separator)
+    stdin.write(DOWN); await delay(10);   // item 4 (git-branch)
+    stdin.write('e'); await delay(20);    // open ColorMenu (keepItem preserves index 4)
     stdin.write(DOWN); await delay(10);   // color option 1 (black)
     stdin.write(DOWN); await delay(10);   // color option 2 (red)
     stdin.write('\r'); await delay(20);   // set red -> back to items
