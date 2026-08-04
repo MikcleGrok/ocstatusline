@@ -3,7 +3,7 @@ import { createServer, type Socket } from 'node:net';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
-import { fetchOpenRouterBalance, fetchOpenRouterBalanceWithSource, secretdSocketPath } from '../../src/tui/openrouter.js';
+import { fetchOpenRouterBalance, fetchOpenRouterBalanceWithSource, fetchOpenRouterUsage, secretdSocketPath } from '../../src/tui/openrouter.js';
 
 // Real Unix domain socket test double for the secretd consumer<->core wire
 // protocol: one connection, one request line of JSON, one response line of
@@ -203,5 +203,21 @@ describe('fetchOpenRouterBalance over the secretd socket', () => {
       consoleLog.mockRestore();
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('fetchOpenRouterUsage over the secretd socket', () => {
+  it('calls the dedicated usage module and preserves zero', async () => {
+    let received = '';
+    await withSecretdServer(
+      (socket) => respondOnce(socket, { ok: true, result: 0 }, (line) => { received = line; }),
+      async (socketPath) => expect(fetchOpenRouterUsage(1000, undefined, socketPath)).resolves.toBe(0),
+    );
+    expect(received).toBe('{"op":"call","module":"openrouter/usage"}\n');
+  });
+
+  it('returns null for missing, null, or non-finite usage', async () => {
+    await withSecretdServer((socket) => respondOnce(socket, { ok: true, result: null }), async (socketPath) => expect(fetchOpenRouterUsage(1000, undefined, socketPath)).resolves.toBeNull());
+    await withSecretdServer((socket) => respondOnce(socket, { ok: true, result: '106' }), async (socketPath) => expect(fetchOpenRouterUsage(1000, undefined, socketPath)).resolves.toBeNull());
   });
 });

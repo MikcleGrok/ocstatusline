@@ -39,6 +39,10 @@ describe('renderLines', () => {
     missingMode.derived.mode = null;
     expect(stripAnsi(renderLines(missingMode, defaultSettings())[0])).not.toContain('build');
   });
+  it('renders the production version in the default status line', () => {
+    const c = { ...ctx(), productionVersion: '2026.08.04' };
+    expect(stripAnsi(renderLines(c, defaultSettings())[0])).toContain('prod 2026.08.04');
+  });
   it('omits empty widgets and their separators', () => {
     const c = ctx(); c.git.isRepo = false; // git-branch hidden
     const [line] = renderLines(c, settings);
