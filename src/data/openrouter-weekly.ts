@@ -5,13 +5,22 @@ import type { OpenRouterBalance } from '../tui/openrouter.js';
 import type { OpenRouterWeeklyContext } from '../types/index.js';
 
 export interface WeeklyAnchor { windowStartMs: number; accountBalanceAtStartUsd: number; }
-export type WeeklyBalanceSeverity = 'critical' | 'warning' | 'normal';
+export type WeeklyBalanceSeverity = 'sky-blue' | 'teal' | 'muted-green' | 'orange' | 'dark-red' | 'neutral';
 export function weeklyStatePath(): string { return join(homedir(), '.config', 'ocstatusline', 'openrouter-weekly-window.json'); }
 
 export function weeklyBalanceSeverity(state: Pick<OpenRouterWeeklyContext, 'source' | 'budgetUsd' | 'remainingUsd'>): WeeklyBalanceSeverity {
-  if (state.source !== 'account') return 'normal';
-  const remainingPct = state.budgetUsd > 0 ? state.remainingUsd / state.budgetUsd : 1;
-  return remainingPct < 0.1 ? 'critical' : remainingPct < 0.25 ? 'warning' : 'normal';
+  if (state.source !== 'account') return 'neutral';
+  return balanceColorLevel(state.remainingUsd, state.budgetUsd);
+}
+
+export function accountBalanceSeverity(state: Pick<OpenRouterWeeklyContext, 'source' | 'budgetUsd' | 'balanceUsd'>): WeeklyBalanceSeverity {
+  if (state.source !== 'account' || state.balanceUsd === null) return 'neutral';
+  return balanceColorLevel(state.balanceUsd, state.budgetUsd);
+}
+
+function balanceColorLevel(balanceUsd: number, budgetUsd: number): Exclude<WeeklyBalanceSeverity, 'neutral'> {
+  const remainingPct = budgetUsd > 0 ? balanceUsd / budgetUsd : 1;
+  return remainingPct < 0.1 ? 'dark-red' : remainingPct < 0.25 ? 'orange' : remainingPct < 0.5 ? 'muted-green' : remainingPct < 0.75 ? 'teal' : 'sky-blue';
 }
 
 export function mondayStartMs(now: number): number {

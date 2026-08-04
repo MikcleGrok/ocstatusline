@@ -2,7 +2,7 @@ import { basename } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseGit } from '../data/git.js';
-import { weeklyBalanceSeverity } from '../data/openrouter-weekly.js';
+import { accountBalanceSeverity, weeklyBalanceSeverity } from '../data/openrouter-weekly.js';
 import type { OpenRouterWeeklyContext } from '../types/index.js';
 
 const execFileAsync = promisify(execFile);
@@ -36,7 +36,7 @@ export type TuiFooterBalance = number | null | OpenRouterWeeklyContext;
 
 export interface TuiFooterSegment {
   text: string;
-  color: 'gray' | 'green' | 'yellow' | 'red';
+  color: 'gray' | number;
 }
 
 function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRouterWeeklyContext & { source: 'account' } {
@@ -48,11 +48,14 @@ function footerBalanceValue(balance: TuiFooterBalance): number | null {
   return isAccountWeeklyBalance(balance) ? balance.remainingUsd : null;
 }
 
-export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | 'green' | 'yellow' | 'red' {
+function severityColor(severity: ReturnType<typeof weeklyBalanceSeverity>): 'gray' | number {
+  return severity === 'neutral' ? 'gray' : ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124 } as const)[severity];
+}
+
+export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | number {
   if (typeof balance === 'number' || balance === null) return 'gray';
   if (!isAccountWeeklyBalance(balance)) return 'gray';
-  const severity = weeklyBalanceSeverity(balance);
-  return severity === 'critical' ? 'red' : severity === 'warning' ? 'yellow' : 'green';
+  return severityColor(weeklyBalanceSeverity(balance));
 }
 
 export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo): TuiFooterSegment[] {
@@ -64,7 +67,7 @@ export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitIn
     { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' },
   ];
   if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null) {
-    segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: 'gray' });
+    segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance)) });
   }
   return segments;
 }
