@@ -31,6 +31,7 @@ const widgets: Widget[] = [
   { type: 'model', label: 'Model', render: (c) => c.derived.model ? c.derived.model.replace(/\s*\(.*context\)$/i, '') : null },
   { type: 'provider', label: 'Provider', render: (c) => c.derived.provider },
   { type: 'mode', label: 'Agent/Mode', render: (c) => c.derived.mode },
+  { type: 'production-version', label: 'Production Version', render: (c) => c.productionVersion ? `prod ${c.productionVersion}` : null },
   { type: 'cost', label: 'Cost', render: (c) => c.derived.cost > 0 ? `$${c.derived.cost.toFixed(2)}` : '$0.00' },
   { type: 'openrouter-weekly', label: 'OpenRouter Weekly', render: (c) => {
     const weekly = c.openrouterWeekly;

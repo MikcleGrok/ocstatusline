@@ -23,6 +23,10 @@ describe('widgets', () => {
     expect(WIDGETS['provider'].render(ctx(), { type: 'provider' })).toBe('ollama');
     expect(WIDGETS['mode'].render(ctx(), { type: 'mode' })).toBe('build');
   });
+  it('formats production version and hides it when unavailable', () => {
+    expect(WIDGETS['production-version'].render(ctx({ productionVersion: '2026.08.04' }), { type: 'production-version' })).toBe('prod 2026.08.04');
+    expect(WIDGETS['production-version'].render(ctx(), { type: 'production-version' })).toBeNull();
+  });
   it('cost formats USD', () => {
     expect(WIDGETS['cost'].render(ctx(), { type: 'cost' })).toBe('$0.04');
   });

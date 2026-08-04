@@ -29,7 +29,7 @@ export const PLUGIN_ENTRY_SRC_RELATIVE = '.opencode/tui-plugins/ocstatusline.ts'
 export const PLUGIN_ENTRY_DEST_RELATIVE = 'tui-plugins/ocstatusline.ts';
 const PLUGIN_TUI_JSON_ENTRY = './tui-plugins/ocstatusline.ts';
 
-export const DEPENDENCY_CLOSURE_RELATIVE = ['src/tui/footer.ts', 'src/tui/openrouter.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/types/index.ts', 'src/utils/config.ts'];
+export const DEPENDENCY_CLOSURE_RELATIVE = ['src/tui/footer.ts', 'src/tui/openrouter.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/data/project-status.ts', 'src/types/index.ts', 'src/utils/config.ts'];
 
 export const PACKAGE_JSON_SRC_RELATIVE = '.opencode/package.json';
 // Non-dependency scalar fields .opencode/package.json pins today (private,

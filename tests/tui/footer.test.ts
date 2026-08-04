@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTuiFooter, formatTuiFooterSegments, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiFooterColor, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooter, formatTuiFooterSegments, formatTuiProductionVersion, getTuiGitInfo, gitInfoForRoute, parseTuiGitInfo, tuiFooterColor, tuiRouteKey, tuiRouteSnapshot } from '../../src/tui/footer.js';
 
 describe('TUI footer', () => {
   const git = { isRepo: true, root: '/work/sender', branch: 'DEV-15309' };
@@ -10,6 +10,12 @@ describe('TUI footer', () => {
 
   it('uses ? for an unavailable balance', () => {
     expect(formatTuiFooter(null, git)).toBe('? · sender · DEV-15309');
+  });
+  it('formats production version as a separate footer segment', () => {
+    expect(formatTuiProductionVersion('2026.08.04')).toEqual({ text: 'prod 2026.08.04', color: 'gray' });
+    expect(formatTuiFooterSegments(null, git, undefined, '2026.08.04')).toEqual([
+      { text: '?', color: 'gray' }, { text: 'sender · DEV-15309', color: 'gray' }, { text: 'prod 2026.08.04', color: 'gray' },
+    ]);
   });
 
   it('uses ? for non-finite balances before formatting', () => {
