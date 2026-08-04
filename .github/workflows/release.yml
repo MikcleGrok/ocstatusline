@@ -12,6 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
+      CI: true
       CI_JOB_ID: ${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4

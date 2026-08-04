@@ -69,6 +69,7 @@ image: env ## Build the pinned Bun toolchain image when its content tag is missi
 
 install: image ## Install dependencies from bun.lock into the cache volumes
 	$(DC) run --rm --no-deps builder bun install --frozen-lockfile
+	$(DC) run --rm --no-deps --user 0:0 builder npm install --prefix .opencode --no-audit --no-fund
 
 lock: image ## Refresh bun.lock from package.json (use after touching dependencies)
 	$(DC) run --rm --no-deps builder bun install

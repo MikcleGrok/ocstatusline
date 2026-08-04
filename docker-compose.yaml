@@ -12,6 +12,7 @@ services:
       - .:/src
       - ./build:/out
       - node_modules:/src/node_modules
+      - opencode_node_modules:/src/.opencode/node_modules
       - bun_cache:/bun-cache
     networks:
       - common
@@ -30,6 +31,7 @@ services:
       - .:/src
       - ./build:/out
       - node_modules:/src/node_modules
+      - opencode_node_modules:/src/.opencode/node_modules
       - bun_cache:/bun-cache
     networks:
       - common
@@ -80,4 +82,5 @@ networks:
 
 volumes:
   node_modules:
+  opencode_node_modules:
   bun_cache:
