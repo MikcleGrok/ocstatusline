@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help env image install lock typecheck test test-watch sh run config up down clean \
+.PHONY: help env image install lock typecheck test test-watch acceptance-tui sh run config up down clean \
         generate-tui-plugin-assets \
         build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui smoke-install \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
@@ -12,6 +12,8 @@ SHELL := /bin/bash
 IMAGE_NAME   ?= ocstatusline-toolchain
 TEST_COLUMNS ?= 120
 TEST_RUNTIME ?= bun
+ACCEPTANCE_TUI_TIMEOUT ?= 90s
+ACCEPTANCE_TUI_KILL_AFTER ?= 5s
 MOCK_PORT    ?= 4096
 
 export
@@ -115,6 +117,9 @@ test: install ## Run the vitest suite inside the toolchain image
 test-watch: install ## Run the vitest suite in watch mode inside the toolchain image
 	$(DC) run --rm --no-deps test-runner $(VITEST)
 
+acceptance-tui: install ## Run the production OpenTUI plugin through the native test renderer
+	$(DC) run --rm --no-deps --workdir /src/.opencode test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts || { status=$$?; if [ $$status -eq 124 ]; then echo "ERROR: OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline and was terminated" >&2; fi; exit $$status; }
+
 # ==============================================================================
 # Build (single self-contained binary per target)
 # ==============================================================================
@@ -201,6 +206,7 @@ record-fixture: install ## Re-record an event fixture from a live server: make r
 release: env ## Full release build: deps, gates, tests, smoke, every target, checksum manifest
 	$(MAKE) install
 	$(MAKE) typecheck
+	$(MAKE) acceptance-tui
 	$(MAKE) check-yoga
 	$(MAKE) test
 	$(MAKE) smoke
@@ -213,7 +219,7 @@ release: env ## Full release build: deps, gates, tests, smoke, every target, che
 # CI helpers
 # ==============================================================================
 
-ci-test: image install typecheck test smoke ## What CI runs: make ci-test
+ci-test: image install typecheck acceptance-tui test smoke ## What CI runs: make ci-test
 
 ci-down: ## CI tear-down: stop stack, keep volumes for inspection
 	$(DC) down --remove-orphans

@@ -12,39 +12,63 @@ describe('TUI footer', () => {
     expect(formatTuiFooter(null, git)).toBe('? · sender · DEV-15309');
   });
 
+  it('uses ? for non-finite balances before formatting', () => {
+    expect(formatTuiFooter(Number.NaN, git)).toBe('? · sender · DEV-15309');
+    expect(formatTuiFooter(Number.POSITIVE_INFINITY, git)).toBe('? · sender · DEV-15309');
+    const weekly = { source: 'account' as const, balanceUsd: Number.NaN, budgetUsd: 25, spentUsd: 0, remainingUsd: Number.NaN, windowStartMs: 0, windowEndMs: 1 };
+    expect(formatTuiFooter(weekly, git)).toBe('? · sender · DEV-15309');
+    expect(formatTuiFooterSegments(weekly, git)).toEqual([{ text: '?', color: 'gray' }, { text: 'sender · DEV-15309', color: 'gray' }]);
+  });
+
+  it('fails closed when weekly timing or spend is non-finite', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 10, budgetUsd: 25, spentUsd: Number.POSITIVE_INFINITY, remainingUsd: 10, windowStartMs: 0, windowEndMs: 100 };
+    expect(formatTuiFooterSegments(weekly, git, 50)).toEqual([{ text: '?', color: 'gray' }, { text: 'sender · DEV-15309', color: 'gray' }]);
+  });
+
   it('formats the account weekly remaining balance instead of the account balance', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.46844, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
     expect(formatTuiFooter(weekly, git)).toBe('$25.00 · sender · DEV-15309');
   });
 
-  it('colors the footer balance from the account weekly remaining percentage', () => {
-    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
-    expect(tuiFooterColor(weekly)).toBe(124);
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 5 })).toBe(208);
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 10 })).toBe(71);
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 15 })).toBe(37);
-    expect(tuiFooterColor({ ...weekly, remainingUsd: 20 })).toBe(75);
+  it('uses the same burn-rate classification as the standalone renderer', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 100 };
+    expect(tuiFooterColor(weekly, 50)).toBe(124);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 20, spentUsd: 5 }, 1)).toBe(124);
+    expect(tuiFooterColor({ ...weekly, remainingUsd: 20, spentUsd: 5 }, 100)).toBe(75);
   });
 
   it('keeps the complete formatter ANSI-256 palette stable', () => {
     const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1 };
-    expect([2, 5, 10, 15, 20].map((remainingUsd) => tuiFooterColor({ ...weekly, remainingUsd }))).toEqual([124, 208, 71, 37, 75]);
+    expect(tuiFooterColor(weekly, 0.5)).toBe(124);
+  });
+
+  it('accepts an injected clock for exact footer boundaries', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 25, budgetUsd: 100, spentUsd: 0, remainingUsd: 100, windowStartMs: 0, windowEndMs: 100 };
+    expect(tuiFooterColor({ ...weekly, spentUsd: 20, remainingUsd: 80 }, 50)).toBe(75);
+    expect(tuiFooterColor({ ...weekly, spentUsd: 33.335, remainingUsd: 66.665 }, 50)).toBe(37);
+    expect(tuiFooterColor({ ...weekly, spentUsd: 50, remainingUsd: 50 }, 50)).toBe(71);
+  });
+
+  it('renders missing weekly timing as neutral gray', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 100 };
+    expect(tuiFooterColor(weekly)).toBe('gray');
+    expect(tuiFooterColor({ ...weekly, spentUsd: Number.NaN }, 50)).toBe('gray');
   });
 
   it('formats weekly remaining and full account balance as separate segments', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.46844, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
-    expect(formatTuiFooterSegments(weekly, git)).toEqual([
+    expect(formatTuiFooterSegments(weekly, git, 0)).toEqual([
       { text: '$25.00', color: 75 },
       { text: 'sender · DEV-15309', color: 'gray' },
       { text: '$49', color: 75 },
     ]);
-    expect(formatTuiFooterSegments(weekly, git).map((segment) => segment.text).join(' · ')).not.toContain('\n');
-    expect(formatTuiFooterSegments(weekly, git).map((segment) => segment.text)).not.toContain('total $49');
+    expect(formatTuiFooterSegments(weekly, git, 0).map((segment) => segment.text).join(' · ')).not.toContain('\n');
+    expect(formatTuiFooterSegments(weekly, git, 0).map((segment) => segment.text)).not.toContain('total $49');
   });
 
   it('rounds the account balance to the nearest whole dollar', () => {
     const weekly = { source: 'account' as const, balanceUsd: 49.5, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
-    expect(formatTuiFooterSegments(weekly, git)[2]).toEqual({ text: '$50', color: 75 });
+    expect(formatTuiFooterSegments(weekly, git, 0)[2]).toEqual({ text: '$50', color: 75 });
   });
 
   it('does not color key-limit or unavailable balances as weekly alerts', () => {

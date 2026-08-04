@@ -51,19 +51,25 @@ describe('renderLines', () => {
   });
   it('uses threshold colors only for the weekly widget', () => {
     const weekly = { ...settings, colorLevel: 'ansi256' as const, lines: [[{ type: 'openrouter-weekly' }]] };
-    const low = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1000 } };
+    const low = { ...ctx(), now: 500, openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 20, remainingUsd: 5, windowStartMs: 0, windowEndMs: 1000 } };
     expect(renderLines(low, weekly)[0]).toContain('38;5;124');
-    low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 5 };
+    low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 15, remainingUsd: 10 };
     expect(renderLines(low, weekly)[0]).toContain('38;5;208');
-    low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 20 };
+    low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 5, remainingUsd: 20 };
     expect(renderLines(low, weekly)[0]).toContain('38;5;75');
+  });
+  it('renders an invalid weekly burn rate neutrally', () => {
+    const weekly = { ...settings, colorLevel: 'ansi256' as const, lines: [[{ type: 'openrouter-weekly', color: 124 }]] };
+    const invalid = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 2, remainingUsd: 23, windowStartMs: Number.NaN, windowEndMs: 100 } };
+    expect(renderLines(invalid, weekly)[0]).toContain('\x1b[37m');
+    expect(renderLines(invalid, weekly)[0]).not.toContain('38;5;124');
   });
   it('passes numeric widget colors through the public pipeline', () => {
     const numericColor: Settings = { ...settings, colorLevel: 'ansi256', lines: [[{ type: 'model', color: 124 }]] };
     expect(renderLines(ctx(), numericColor)[0]).toContain('38;5;124');
   });
   it('renders distinct threshold escapes at every color level', () => {
-    const low = { ...ctx(), openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 23, remainingUsd: 2, windowStartMs: 0, windowEndMs: 1000 } };
+    const low = { ...ctx(), now: 500, openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 20, remainingUsd: 5, windowStartMs: 0, windowEndMs: 1000 } };
     for (const [colorLevel, critical, warning, healthy] of [
       ['ansi16', '\x1b[31m', '\x1b[33m', '\x1b[34m'],
       ['ansi256', '38;5;124', '38;5;208', '38;5;75'],
@@ -71,14 +77,14 @@ describe('renderLines', () => {
     ] as const) {
       const weekly = { ...settings, colorLevel, lines: [[{ type: 'openrouter-weekly' }]] };
       const criticalLine = renderLines(low, weekly)[0];
-      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 5 };
+      low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 15, remainingUsd: 10 };
       const warningLine = renderLines(low, weekly)[0];
       expect(criticalLine).toContain(critical);
       expect(warningLine).toContain(warning);
-      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 20 };
+      low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 5, remainingUsd: 20 };
       expect(renderLines(low, weekly)[0]).toContain(healthy);
       expect(criticalLine).not.toBe(warningLine);
-      low.openrouterWeekly = { ...low.openrouterWeekly, remainingUsd: 2 };
+      low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 20, remainingUsd: 5 };
     }
   });
 });

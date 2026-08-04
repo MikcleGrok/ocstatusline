@@ -40,11 +40,12 @@ export interface TuiFooterSegment {
 }
 
 function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRouterWeeklyContext & { source: 'account' } {
-  return typeof balance === 'object' && balance !== null && balance.source === 'account' && typeof balance.remainingUsd === 'number';
+  return typeof balance === 'object' && balance !== null && balance.source === 'account' && Number.isFinite(balance.remainingUsd) && Number.isFinite(balance.budgetUsd) && Number.isFinite(balance.spentUsd) && Number.isFinite(balance.windowStartMs) && Number.isFinite(balance.windowEndMs);
 }
 
 function footerBalanceValue(balance: TuiFooterBalance): number | null {
-  if (typeof balance === 'number' || balance === null) return balance;
+  if (balance === null) return null;
+  if (typeof balance === 'number') return Number.isFinite(balance) ? balance : null;
   return isAccountWeeklyBalance(balance) ? balance.remainingUsd : null;
 }
 
@@ -52,21 +53,21 @@ function severityColor(severity: ReturnType<typeof weeklyBalanceSeverity>): 'gra
   return severity === 'neutral' ? 'gray' : ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124 } as const)[severity];
 }
 
-export function tuiFooterColor(balance: TuiFooterBalance): 'gray' | number {
+export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number): 'gray' | number {
   if (typeof balance === 'number' || balance === null) return 'gray';
   if (!isAccountWeeklyBalance(balance)) return 'gray';
-  return severityColor(weeklyBalanceSeverity(balance));
+  return severityColor(weeklyBalanceSeverity(balance, nowMs));
 }
 
-export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo): TuiFooterSegment[] {
+export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number): TuiFooterSegment[] {
   if (!git.isRepo || !git.root || !git.branch) return [];
   const value = footerBalanceValue(balance);
   const weeklyText = value === null ? '?' : `$${value.toFixed(2)}`;
   const segments: TuiFooterSegment[] = [
-    { text: weeklyText, color: tuiFooterColor(balance) },
+    { text: weeklyText, color: tuiFooterColor(balance, nowMs) },
     { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' },
   ];
-  if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null) {
+  if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null && Number.isFinite(balance.balanceUsd)) {
     segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance)) });
   }
   return segments;
