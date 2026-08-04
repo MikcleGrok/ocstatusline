@@ -2,7 +2,7 @@ import { createSignal } from 'solid-js';
 import { jsx } from '@opentui/solid/jsx-runtime';
 import { RGBA } from '@opentui/core';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
-import { formatTuiFooterSegments, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooterSegments, formatTuiModelCost, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiFooterSegment, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { readProjectStatus } from '../../src/data/project-status.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
 import { fetchOpenRouterBalanceWithSource, fetchOpenRouterUsage } from '../../src/tui/openrouter.js';
@@ -13,6 +13,24 @@ const GIT_REFRESH_INTERVAL = 10_000;
 const STATUS_REFRESH_INTERVAL = 2_000;
 const ROUTE_POLL_INTERVAL = 100;
 const EMPTY_GIT: TuiGitInfo = { isRepo: false, root: null, branch: null };
+
+function currentModelCost(api: { route?: { current?: { name?: unknown; params?: { sessionID?: unknown } } }; state?: { session?: { get?: (sessionID: string) => unknown }; provider?: unknown } }): TuiFooterSegment | null {
+  const sessionID = api.route?.current?.name === 'session' && typeof api.route.current.params?.sessionID === 'string' ? api.route.current.params.sessionID : null;
+  if (!sessionID) return null;
+  const selected = api.state?.session?.get?.(sessionID);
+  if (!selected || typeof selected !== 'object') return null;
+  const modelSelection = (selected as { model?: unknown }).model;
+  if (!modelSelection || typeof modelSelection !== 'object') return null;
+  const providerID = (modelSelection as { providerID?: unknown }).providerID;
+  const modelID = (modelSelection as { id?: unknown }).id;
+  if (typeof providerID !== 'string' || typeof modelID !== 'string') return null;
+  const providerState = api.state?.provider;
+  const provider = Array.isArray(providerState) ? providerState.find((item) => item && typeof item === 'object' && (item as { id?: unknown }).id === providerID) : null;
+  if (!provider || typeof provider !== 'object') return null;
+  const models = (provider as { models?: unknown }).models;
+  const model = models && typeof models === 'object' ? (models as Record<string, unknown>)[modelID] : null;
+  return formatTuiModelCost(model);
+}
 
 export function tuiTextColor(color: 'gray' | number): string | RGBA {
   return typeof color === 'number' ? RGBA.fromIndex(color) : color;
@@ -129,12 +147,15 @@ const module: TuiPluginModule = {
             const weekly = segments[0];
             const repository = segments[1];
             const account = segments.find((segment) => segment.text.startsWith('$') && segment !== weekly);
+            const modelCost = currentModelCost(api);
             const production = segments.find((segment) => segment.text.startsWith('prod '));
             return jsx('box', { width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden', children: [
               weekly ? jsx('text', { fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text }) : null,
               repository ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' }) : null,
               repository ? jsx('text', { fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text }) : null,
-              account ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' }) : null,
+              modelCost ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' }) : account ? null : jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' }),
+              modelCost ? jsx('text', { fg: tuiTextColor(modelCost.color), wrapMode: 'none', children: modelCost.text }) : null,
+              account ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' }) : null,
               account ? jsx('text', { fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text }) : null,
               production ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' }) : null,
               production ? jsx('text', { fg: tuiTextColor(production.color), wrapMode: 'none', children: production.text }) : null,
