@@ -39,6 +39,10 @@ export interface TuiFooterSegment {
   color: 'gray' | number;
 }
 
+export function formatTuiProductionVersion(version: string | null): TuiFooterSegment | null {
+  return version ? { text: `prod ${version}`, color: 'gray' } : null;
+}
+
 function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRouterWeeklyContext & { source: 'account' } {
   return typeof balance === 'object' && balance !== null && balance.source === 'account' && Number.isFinite(balance.remainingUsd) && Number.isFinite(balance.budgetUsd) && Number.isFinite(balance.spentUsd) && Number.isFinite(balance.windowStartMs) && Number.isFinite(balance.windowEndMs);
 }
@@ -59,7 +63,7 @@ export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number): 'gray
   return severityColor(weeklyBalanceSeverity(balance, nowMs));
 }
 
-export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number): TuiFooterSegment[] {
+export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null): TuiFooterSegment[] {
   if (!git.isRepo || !git.root || !git.branch) return [];
   const value = footerBalanceValue(balance);
   const weeklyText = value === null ? '?' : `$${value.toFixed(2)}`;
@@ -70,6 +74,8 @@ export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitIn
   if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null && Number.isFinite(balance.balanceUsd)) {
     segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance)) });
   }
+  const production = formatTuiProductionVersion(productionVersion);
+  if (production) segments.push(production);
   return segments;
 }
 

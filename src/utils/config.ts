@@ -18,6 +18,8 @@ export function defaultSettings(): Settings {
       { type: 'separator' },
       { type: 'mode', color: 'cyan' },
       { type: 'separator' },
+      { type: 'production-version', color: 'green' },
+      { type: 'separator' },
       { type: 'git-branch', color: 'magenta' },
       { type: 'separator' },
       { type: 'context-percentage', color: 'yellow' },

@@ -30,6 +30,7 @@ export interface RenderContext {
   termWidth: number;
   now: number;
   openrouterWeekly: OpenRouterWeeklyContext;
+  productionVersion?: string | null;
 }
 export interface OpenRouterWeeklyContext {
   source: 'account' | 'key-limit' | null;
@@ -39,6 +40,8 @@ export interface OpenRouterWeeklyContext {
   remainingUsd: number;
   windowStartMs: number;
   windowEndMs: number;
+  usageAtStart?: number;
+  lastUsage?: number;
 }
 export type ColorLevel = 'ansi16' | 'ansi256' | 'truecolor';
 export interface WidgetConfig {
