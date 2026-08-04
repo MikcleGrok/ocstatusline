@@ -2,11 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { defaultSettings, mergeSettings } from '../../src/utils/config';
 
 describe('config', () => {
-  it('defaultSettings has one line with model+git+context widgets and sane refresh', () => {
+  it('defaultSettings has one line with model+mode+git+context widgets and sane refresh', () => {
     const s = defaultSettings();
     expect(s.lines.length).toBe(1);
     const types = s.lines[0].map(w => w.type);
     expect(types).toContain('model');
+    expect(types).toContain('mode');
     expect(s.refreshInterval).toBeGreaterThan(0);
   });
   it('mergeSettings fills missing fields from defaults', () => {

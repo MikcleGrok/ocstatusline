@@ -16,6 +16,8 @@ export function defaultSettings(): Settings {
     lines: [[
       { type: 'model', color: 'cyan', bold: true },
       { type: 'separator' },
+      { type: 'mode', color: 'cyan' },
+      { type: 'separator' },
       { type: 'git-branch', color: 'magenta' },
       { type: 'separator' },
       { type: 'context-percentage', color: 'yellow' },
