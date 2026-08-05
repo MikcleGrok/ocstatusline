@@ -114,7 +114,7 @@ async function main(): Promise<void> {
     // @ts-expect-error OpenTUI's Bun entrypoint is executable test infrastructure without declarations.
     const { testRender } = await import('../../.opencode/node_modules/@opentui/solid/index.bun.js') as unknown as { testRender: TestRender };
     let appBottom: Slot | undefined;
-    const acceptanceModel = { cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } } };
+    const acceptanceModel = { cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } }, limit: { context: 1_000_000 } };
     const api = {
       route: { current: { name: 'session', params: { sessionID: 'acceptance-session' } } },
       state: {
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     const expectedRepository = `${expected.repo} · ${expected.ref}`;
     const capture = await waitForNativeFrame(setup, ({ frame, spans }) => {
       const spanText = spans.map((span) => span.text).join('');
-      return frame.includes('$25.00') && frame.includes('$10') && frame.includes('$/1M base in 0.15') && frame.includes('>200K in 0.3') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$/1M base in 0.15') && spanText.includes('>200K in 0.3') && spanText.includes(expectedRepository);
+      return frame.includes('$25.00') && frame.includes('$10') && frame.includes('$0.15/$0.60 | $0.30/$1.20 >200K · 1M') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$0.15/$0.60 | $0.30/$1.20 >200K · 1M') && spanText.includes(expectedRepository);
     }, 10_000);
     const { frame, spans } = capture;
     const spanText = spans.map((span) => span.text).join('');
@@ -145,14 +145,12 @@ async function main(): Promise<void> {
     assert.match(frame, /\$25\.00/);
     assert.ok(frame.includes(expectedRepository), `footer did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(frame, /\$10/);
-    assert.match(frame, /\$\/1M base in 0\.15/);
-    assert.match(frame, />200K in 0\.3/);
+    assert.match(frame, /\$0\.15\/\$0\.60 \| \$0\.30\/\$1\.20 >200K · 1M/);
     assert.match(spanText, /\$25\.00/);
     assert.ok(spanText.includes(expectedRepository), `native spans did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(spanText, /\$10/);
-    assert.match(spanText, /\$\/1M base in 0\.15/);
-    assert.match(spanText, />200K in 0\.3/);
-    assert.ok(spanText.indexOf('>200K in 0.3') < spanText.indexOf('$10'), 'model cost must be directly before account balance');
+    assert.match(spanText, /\$0\.15\/\$0\.60 \| \$0\.30\/\$1\.20 >200K · 1M/);
+    assert.ok(spanText.indexOf('$0.15/$0.60') < spanText.indexOf('$10'), 'model cost must be directly before account balance');
     assert.ok(weeklySpan && weeklySpan.fg.buffer instanceof Uint16Array, 'weekly footer did not use native fg');
     assert.ok(accountSpan && accountSpan.fg.buffer instanceof Uint16Array, 'account footer did not use native fg');
     assert.notEqual(weeklySpan.fg.buffer[0], 128, 'weekly footer stayed gray');

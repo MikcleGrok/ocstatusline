@@ -101,7 +101,7 @@ describe('runTuiInstall file copy', () => {
     expect(pluginSource).toContain("fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
     expect(pluginSource).toContain("fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text");
-    expect(pluginSource).toContain("modelCost ? jsx('text', { fg: 'gray', wrapMode: 'none', marginLeft: 'auto', children: ' · ' })");
+    expect(pluginSource).toContain("modelCost ? jsx('text', { fg: tuiTextColor(modelCost.color), wrapMode: 'none', marginLeft: 'auto', children: modelCost.text })");
     expect(pluginSource).toContain("fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text");
     expect(pluginSource).toContain('const modelCost = currentModelCost(api);');
     expect(pluginSource).toContain("children: modelCost.text");
