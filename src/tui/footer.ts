@@ -57,7 +57,8 @@ export function formatTuiModelCost(model: unknown): TuiFooterSegment | null {
     const cacheRead = finiteNonNegative(tier.cache_read ?? tier.cache?.read);
     const cacheWrite = finiteNonNegative(tier.cache_write ?? tier.cache?.write);
     if (input === null || output === null || cacheRead === null || cacheWrite === null) return null;
-    return `$${input.toFixed(2)}/$${output.toFixed(2)}`;
+    const formatPrice = (price: number): string => price.toFixed(2).replace(/\.?0+$/, '');
+    return `$${formatPrice(input)}/${formatPrice(output)}`;
   };
   const base = formatPrices(prices);
   if (!base) return null;
