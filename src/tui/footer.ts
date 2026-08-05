@@ -48,6 +48,7 @@ export function formatTuiModelCost(model: unknown): TuiFooterSegment | null {
   const cost = (model as { cost?: unknown }).cost;
   if (!cost || typeof cost !== 'object') return null;
   const prices = cost as { input?: unknown; output?: unknown; cache_read?: unknown; cache_write?: unknown; cache?: { read?: unknown; write?: unknown }; experimentalOver200K?: unknown };
+  const modelRecord = model as { limit?: { context?: unknown }; contextLength?: unknown };
   const formatPrices = (value: unknown): string | null => {
     if (!value || typeof value !== 'object') return null;
     const tier = value as { input?: unknown; output?: unknown; cache_read?: unknown; cache_write?: unknown; cache?: { read?: unknown; write?: unknown } };
@@ -56,13 +57,15 @@ export function formatTuiModelCost(model: unknown): TuiFooterSegment | null {
     const cacheRead = finiteNonNegative(tier.cache_read ?? tier.cache?.read);
     const cacheWrite = finiteNonNegative(tier.cache_write ?? tier.cache?.write);
     if (input === null || output === null || cacheRead === null || cacheWrite === null) return null;
-    return `in ${input} · out ${output} · read ${cacheRead} · write ${cacheWrite}`;
+    return `$${input.toFixed(2)}/$${output.toFixed(2)}`;
   };
   const base = formatPrices(prices);
   if (!base) return null;
   const over200K = formatPrices(prices.experimentalOver200K);
-  const parts = [base ? `base ${base}` : null, over200K ? `>200K ${over200K}` : null].filter((part): part is string => part !== null);
-  return { text: `$/1M ${parts.join(' · ')}`, color: 'gray' };
+  const context = finiteNonNegative(modelRecord.limit?.context ?? modelRecord.contextLength);
+  const contextText = context === null || context === 0 ? '' : context >= 1_000_000 ? `${(context / 1_000_000).toFixed(1).replace(/\.0$/, '')}M` : `${Math.round(context / 1_000)}K`;
+  const pricesText = over200K ? `${base} | ${over200K} >200K` : base;
+  return { text: `${pricesText}${contextText ? ` · ${contextText}` : ''}`, color: 'gray' };
 }
 
 export function formatTuiProductionVersion(version: string | null): TuiFooterSegment | null {
