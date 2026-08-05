@@ -4,13 +4,17 @@ import { formatTuiFooter, formatTuiFooterSegments, formatTuiModelCost, formatTui
 describe('TUI footer', () => {
   const git = { isRepo: true, root: '/work/sender', branch: 'DEV-15309' };
 
-  it('formats model tariffs with an explicit per-million-token unit', () => {
-    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache_read: 0.02, cache_write: 0.3 } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
-    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
+  it('formats model tariffs compactly with two decimal places', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache_read: 0.02, cache_write: 0.3 }, contextLength: 1_000_000 })).toEqual({ text: '$0.15/$0.60 · 1M', color: 'gray' });
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 } }, limit: { context: 1_000_000 } })).toEqual({ text: '$0.15/$0.60 · 1M', color: 'gray' });
   });
 
-  it('shows the base and experimental over-200K tariffs explicitly', () => {
-    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3 · >200K in 0.3 · out 1.2 · read 0.04 · write 0.6', color: 'gray' });
+  it('omits the context suffix when the model does not provide a context limit', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache_read: 0.02, cache_write: 0.3 } })).toEqual({ text: '$0.15/$0.60', color: 'gray' });
+  });
+
+  it('shows a complete experimental tier and context suffix', () => {
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } }, contextLength: 1_000_000 })).toEqual({ text: '$0.15/$0.60 | $0.30/$1.20 >200K · 1M', color: 'gray' });
   });
 
   it('hides missing or invalid model tariffs', () => {
@@ -20,7 +24,7 @@ describe('TUI footer', () => {
   });
 
   it('hides an incomplete experimental tier without hiding a complete base tariff', () => {
-    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04 } } } })).toEqual({ text: '$/1M base in 0.15 · out 0.6 · read 0.02 · write 0.3', color: 'gray' });
+    expect(formatTuiModelCost({ cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04 } } } })).toEqual({ text: '$0.15/$0.60', color: 'gray' });
   });
 
   it('hides the complete model tariff when the base tier is incomplete', () => {
