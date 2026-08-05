@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     const expectedRepository = `${expected.repo} · ${expected.ref}`;
     const capture = await waitForNativeFrame(setup, ({ frame, spans }) => {
       const spanText = spans.map((span) => span.text).join('');
-      return frame.includes('$25.00') && frame.includes('$10') && frame.includes('$0.15/$0.60 | $0.30/$1.20 >200K · 1M') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$0.15/$0.60 | $0.30/$1.20 >200K · 1M') && spanText.includes(expectedRepository);
+      return frame.includes('$25.00') && frame.includes('$10') && frame.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && spanText.includes(expectedRepository);
     }, 10_000);
     const { frame, spans } = capture;
     const spanText = spans.map((span) => span.text).join('');
@@ -145,12 +145,12 @@ async function main(): Promise<void> {
     assert.match(frame, /\$25\.00/);
     assert.ok(frame.includes(expectedRepository), `footer did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(frame, /\$10/);
-    assert.match(frame, /\$0\.15\/\$0\.60 \| \$0\.30\/\$1\.20 >200K · 1M/);
+    assert.match(frame, /\$0\.15\/0\.6 \| \$0\.3\/1\.2 >200K · 1M/);
     assert.match(spanText, /\$25\.00/);
     assert.ok(spanText.includes(expectedRepository), `native spans did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(spanText, /\$10/);
-    assert.match(spanText, /\$0\.15\/\$0\.60 \| \$0\.30\/\$1\.20 >200K · 1M/);
-    assert.ok(spanText.indexOf('$0.15/$0.60') < spanText.indexOf('$10'), 'model cost must be directly before account balance');
+    assert.match(spanText, /\$0\.15\/0\.6 \| \$0\.3\/1\.2 >200K · 1M/);
+    assert.ok(spanText.indexOf('$0.15/0.6') < spanText.indexOf('$10'), 'model cost must be directly before account balance');
     assert.ok(weeklySpan && weeklySpan.fg.buffer instanceof Uint16Array, 'weekly footer did not use native fg');
     assert.ok(accountSpan && accountSpan.fg.buffer instanceof Uint16Array, 'account footer did not use native fg');
     assert.notEqual(weeklySpan.fg.buffer[0], 128, 'weekly footer stayed gray');
