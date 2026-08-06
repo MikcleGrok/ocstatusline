@@ -48,11 +48,19 @@ HOST_TARGET := bun-linux-x64
   endif
 endif
 
-ifeq ($(shell docker version --format '{{.Server.Arch}}'),arm64)
-LINUX_TARGET := bun-linux-arm64
-else
-LINUX_TARGET := bun-linux-x64
+DOCKER_PLATFORM := $(strip $(DOCKER_DEFAULT_PLATFORM))
+ifeq ($(strip $(DOCKER_PLATFORM)),)
+DOCKER_PLATFORM := linux/$(shell docker version --format '{{.Server.Arch}}')
 endif
+
+ifeq ($(DOCKER_PLATFORM),linux/arm64)
+LINUX_TARGET := bun-linux-arm64
+else ifeq ($(DOCKER_PLATFORM),linux/amd64)
+LINUX_TARGET := bun-linux-x64
+else
+$(error Unsupported Docker platform '$(DOCKER_PLATFORM)'; expected linux/amd64 or linux/arm64)
+endif
+export DOCKER_DEFAULT_PLATFORM := $(DOCKER_PLATFORM)
 LINUX_BIN := ocstatusline-$(patsubst bun-%,%,$(LINUX_TARGET))
 
 # ==============================================================================

@@ -9,7 +9,7 @@ export interface WeeklyAnchor { version: 2; windowStartMs: number; usageAtStart:
 interface LegacyWeeklyAnchor { windowStartMs: number; accountBalanceAtStartUsd: number; pendingUsageRebase?: boolean; }
 interface WeeklyRecord { version: 1; windowStartMs: number; usageAtStart?: number; observedUsage?: number; legacyBalanceAtStartUsd?: number; pendingUsageRebase?: boolean; }
 const writerId = `${process.pid}-${randomUUID()}`;
-export type WeeklyBalanceSeverity = 'sky-blue' | 'teal' | 'muted-green' | 'orange' | 'dark-red' | 'neutral';
+export type WeeklyBalanceSeverity = 'sky-blue' | 'teal' | 'muted-green' | 'orange' | 'dark-red' | 'over-budget' | 'neutral';
 export function weeklyStatePath(): string { return join(homedir(), '.config', 'ocstatusline', 'openrouter-weekly-window.json'); }
 
 export function mergeWeeklyUsageState(previous: WeeklyAnchor | null, usageAtStart: number, observedUsage: number): WeeklyAnchor {
@@ -53,6 +53,7 @@ export function weeklyBalanceSeverity(state: Pick<OpenRouterWeeklyContext, 'sour
   }
   const windowDurationMs = windowEndMs - windowStartMs;
   const elapsedMs = Math.min(windowDurationMs, Math.max(0, nowMs - windowStartMs));
+  if (spentUsd > state.budgetUsd) return 'over-budget';
   const usedPct = spentUsd / state.budgetUsd * 100;
   if (elapsedMs === 0) return spentUsd === 0 ? 'sky-blue' : usedPct < 15 ? 'orange' : 'dark-red';
   const elapsedPct = elapsedMs / windowDurationMs * 100;
