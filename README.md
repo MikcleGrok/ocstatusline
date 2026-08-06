@@ -124,6 +124,22 @@ ocstatusline config
 - **Preview** — see your line rendered with representative sample data.
 - **Save & exit** — writes `~/.config/ocstatusline/settings.json`.
 
+Weekly OpenRouter severity colors are optional ANSI-256 integer values. Missing
+or invalid values use the defaults, and partial objects are merged:
+
+```json
+{
+  "severityColors": {
+    "skyBlue": 75,
+    "teal": 37,
+    "mutedGreen": 71,
+    "orange": 208,
+    "darkRed": 124,
+    "overBudget": 90
+  }
+}
+```
+
 ### Run the live daemon
 
 Managed server (default) — `ocstatusline` spawns its own `opencode serve` and prints an attach URL:

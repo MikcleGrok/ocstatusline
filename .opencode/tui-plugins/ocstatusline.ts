@@ -41,7 +41,8 @@ const module: TuiPluginModule = {
   tui: async (api) => {
     const [revision, refresh] = createSignal(0);
     const [currentSnapshot, setCurrentSnapshot] = createSignal<TuiRouteSnapshot>(tuiRouteSnapshot(api.route.current, api.state));
-    const weeklyBudgetUsd = loadSettings().openrouter.weeklyBudgetUsd;
+    const settings = loadSettings();
+    const weeklyBudgetUsd = settings.openrouter.weeklyBudgetUsd;
     let openrouterWeekly = updateWeeklyState(null, weeklyBudgetUsd, Date.now());
     let lastGit = EMPTY_GIT;
     let gitSessionKey: string | null = null;
@@ -143,7 +144,7 @@ const module: TuiPluginModule = {
           revision();
             const snapshot = currentSnapshot();
             const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
-            const segments = formatTuiFooterSegments(openrouterWeekly, git, Date.now(), productionVersion);
+            const segments = formatTuiFooterSegments(openrouterWeekly, git, Date.now(), productionVersion, settings.severityColors);
             const weekly = segments[0];
             const repository = segments[1];
             const account = segments.find((segment) => segment.text.startsWith('$') && segment !== weekly);

@@ -29,8 +29,15 @@ describe('colorize', () => {
     expect(colorize('x', { color: 75 }, 'ansi16')).toContain('\x1b[34m');
     expect(colorize('x', { color: 124 }, 'ansi16')).not.toBe(colorize('x', { color: 75 }, 'ansi16'));
   });
+  it('maps arbitrary ANSI-256 colors to the nearest ANSI-16 color', () => {
+    expect(colorize('x', { color: 196 }, 'ansi16')).toContain('\x1b[91m');
+  });
   it('keeps distinct exact ANSI-256 dynamic colors', () => {
     expect(colorize('x', { color: 124 }, 'ansi256')).toContain('38;5;124');
     expect(colorize('x', { color: 75 }, 'ansi256')).toContain('38;5;75');
+  });
+  it('converts arbitrary ANSI-256 colors to truecolor', () => {
+    expect(colorize('x', { color: 196 }, 'truecolor')).toContain('38;2;255;0;0');
+    expect(colorize('x', { color: 250 }, 'truecolor')).toContain('38;2;188;188;188');
   });
 });

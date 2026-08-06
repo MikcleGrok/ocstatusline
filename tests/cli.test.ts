@@ -42,4 +42,10 @@ describe('parseCli', () => {
   it('help → help mode', () => {
     expect(parseCli(['help'])).toEqual({ mode: 'help' });
   });
+  it('--version → version mode', () => {
+    expect(parseCli(['--version'])).toEqual({ mode: 'version' });
+  });
+  it('-v → version mode', () => {
+    expect(parseCli(['-v'])).toEqual({ mode: 'version' });
+  });
 });
