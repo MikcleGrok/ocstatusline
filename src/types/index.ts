@@ -44,6 +44,14 @@ export interface OpenRouterWeeklyContext {
   lastUsage?: number;
 }
 export type ColorLevel = 'ansi16' | 'ansi256' | 'truecolor';
+export interface SeverityColors {
+  skyBlue: number;
+  teal: number;
+  mutedGreen: number;
+  orange: number;
+  darkRed: number;
+  overBudget: number;
+}
 export interface WidgetConfig {
   type: string;
   color?: string | number; // name/hex string or ANSI-256 color number
@@ -66,6 +74,7 @@ export interface Settings {
   colorLevel: ColorLevel;
   powerline: PowerlineConfig;
   openrouter: { weeklyBudgetUsd: number };
+  severityColors?: SeverityColors;
 }
 export function emptyState(): OpencodeState {
   return { connected: false, idle: true, byMessage: {}, latestAssistantID: null, sessionStart: null, lastUpdate: 0 };

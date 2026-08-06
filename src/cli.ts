@@ -14,7 +14,7 @@ export function parseCli(argv: string[]): CliCommand {
     return { mode: 'error', error: 'render requires exactly --stdin' };
   }
   if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') return { mode: 'help' };
-  if (argv.includes('--version') || argv[0] === 'version') return { mode: 'version' };
+  if (argv.includes('--version') || (argv.length === 1 && argv[0] === '-v') || argv[0] === 'version') return { mode: 'version' };
   if (argv[0] === 'install') return { mode: 'install' };
   if (argv[0] === 'start') {
     const i = argv.indexOf('--server');

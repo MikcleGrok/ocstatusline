@@ -66,8 +66,14 @@ describe('TUI footer', () => {
   it('formats weekly overspend as a negative value and uses its dedicated color', () => {
     const weekly = { source: 'account' as const, balanceUsd: 0, budgetUsd: 25, spentUsd: 26.25, remainingUsd: 0, windowStartMs: 0, windowEndMs: 100 };
     expect(formatTuiFooter(weekly, git)).toBe('-$1.25 · sender · DEV-15309');
-    expect(tuiFooterColor(weekly, 50)).toBe(201);
-    expect(formatTuiFooterSegments(weekly, git, 50)[0]).toEqual({ text: '-$1.25', color: 201 });
+    expect(tuiFooterColor(weekly, 50)).toBe(90);
+    expect(formatTuiFooterSegments(weekly, git, 50)[0]).toEqual({ text: '-$1.25', color: 90 });
+  });
+  it('uses configured weekly severity colors for both footer balances', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 1, budgetUsd: 25, spentUsd: 26.25, remainingUsd: 0, windowStartMs: 0, windowEndMs: 100 };
+    const colors = { skyBlue: 1, teal: 2, mutedGreen: 3, orange: 4, darkRed: 5, overBudget: 6 };
+    expect(tuiFooterColor(weekly, 50, colors)).toBe(6);
+    expect(formatTuiFooterSegments(weekly, git, 50, null, colors)[2]).toEqual({ text: '$1', color: 5 });
   });
 
   it('uses the same burn-rate classification as the standalone renderer', () => {
