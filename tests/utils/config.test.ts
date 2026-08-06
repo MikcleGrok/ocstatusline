@@ -21,4 +21,8 @@ describe('config', () => {
     expect(mergeSettings({ openrouter: { weeklyBudgetUsd: Number.NaN } } as any).openrouter.weeklyBudgetUsd).toBe(25);
     expect(mergeSettings({ openrouter: { weeklyBudgetUsd: 0 } } as any).openrouter.weeklyBudgetUsd).toBe(25);
   });
+  it('deep-merges valid severity colors and rejects invalid values', () => {
+    const merged = mergeSettings({ severityColors: { skyBlue: 12, orange: 255, teal: 1.5, darkRed: -1 } } as any);
+    expect(merged.severityColors).toEqual({ skyBlue: 12, teal: 37, mutedGreen: 71, orange: 255, darkRed: 124, overBudget: 90 });
+  });
 });

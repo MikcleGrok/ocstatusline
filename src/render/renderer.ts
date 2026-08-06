@@ -1,6 +1,7 @@
 import type { RenderContext, Settings, WidgetConfig } from '../types/index.js';
 import { WIDGETS } from '../widgets/index.js';
 import { colorize } from './colors.js';
+import { severityColorCode } from '../utils/config.js';
 import { joinPlain, joinPowerline } from './powerline.js';
 import { fitWidth } from './flex.js';
 import { weeklyBalanceSeverity } from '../data/openrouter-weekly.js';
@@ -13,7 +14,7 @@ function renderWidget(ctx: RenderContext, cfg: WidgetConfig, settings: Settings)
   const raw = w.render(ctx, cfg);
   if (raw === null || raw === '') return null;
   const severity = cfg.type === 'openrouter-weekly' ? weeklyBalanceSeverity(ctx.openrouterWeekly, ctx.now) : 'neutral';
-   const dynamic = cfg.type === 'openrouter-weekly' && severity !== 'neutral' ? ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124, 'over-budget': 201 } as const)[severity] : undefined;
+  const dynamic = cfg.type === 'openrouter-weekly' ? severityColorCode(severity, settings.severityColors) : undefined;
   return colorize(raw, { color: cfg.type === 'openrouter-weekly' && severity === 'neutral' ? 'white' : dynamic ?? cfg.color, bold: cfg.bold }, settings.colorLevel);
 }
 
