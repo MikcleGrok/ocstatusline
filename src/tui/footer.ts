@@ -80,11 +80,15 @@ function isAccountWeeklyBalance(balance: TuiFooterBalance): balance is OpenRoute
 function footerBalanceValue(balance: TuiFooterBalance): number | null {
   if (balance === null) return null;
   if (typeof balance === 'number') return Number.isFinite(balance) ? balance : null;
-  return isAccountWeeklyBalance(balance) ? balance.remainingUsd : null;
+  return isAccountWeeklyBalance(balance) ? balance.spentUsd > balance.budgetUsd ? balance.budgetUsd - balance.spentUsd : balance.remainingUsd : null;
+}
+
+function formatFooterBalance(value: number | null): string {
+  return value === null ? '?' : value < 0 ? `-$${Math.abs(value).toFixed(2)}` : `$${value.toFixed(2)}`;
 }
 
 function severityColor(severity: ReturnType<typeof weeklyBalanceSeverity>): 'gray' | number {
-  return severity === 'neutral' ? 'gray' : ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124 } as const)[severity];
+  return severity === 'neutral' ? 'gray' : ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124, 'over-budget': 201 } as const)[severity];
 }
 
 export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number): 'gray' | number {
@@ -96,7 +100,7 @@ export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number): 'gray
 export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null): TuiFooterSegment[] {
   if (!git.isRepo || !git.root || !git.branch) return [];
   const value = footerBalanceValue(balance);
-  const weeklyText = value === null ? '?' : `$${value.toFixed(2)}`;
+  const weeklyText = formatFooterBalance(value);
   const segments: TuiFooterSegment[] = [
     { text: weeklyText, color: tuiFooterColor(balance, nowMs) },
     { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' },
@@ -112,7 +116,7 @@ export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitIn
 export function formatTuiFooter(balance: TuiFooterBalance, git: TuiGitInfo): string {
   if (!git.isRepo || !git.root || !git.branch) return '';
   const value = footerBalanceValue(balance);
-  const balanceText = value === null ? '?' : `$${value.toFixed(2)}`;
+  const balanceText = formatFooterBalance(value);
   return `${balanceText} · ${basename(git.root)} · ${git.branch}`;
 }
 

@@ -13,7 +13,7 @@ function renderWidget(ctx: RenderContext, cfg: WidgetConfig, settings: Settings)
   const raw = w.render(ctx, cfg);
   if (raw === null || raw === '') return null;
   const severity = cfg.type === 'openrouter-weekly' ? weeklyBalanceSeverity(ctx.openrouterWeekly, ctx.now) : 'neutral';
-  const dynamic = cfg.type === 'openrouter-weekly' && severity !== 'neutral' ? ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124 } as const)[severity] : undefined;
+   const dynamic = cfg.type === 'openrouter-weekly' && severity !== 'neutral' ? ({ 'sky-blue': 75, teal: 37, 'muted-green': 71, orange: 208, 'dark-red': 124, 'over-budget': 201 } as const)[severity] : undefined;
   return colorize(raw, { color: cfg.type === 'openrouter-weekly' && severity === 'neutral' ? 'white' : dynamic ?? cfg.color, bold: cfg.bold }, settings.colorLevel);
 }
 
