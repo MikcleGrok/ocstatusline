@@ -65,6 +65,10 @@ describe('widgets', () => {
     c.openrouterWeekly = { ...c.openrouterWeekly, source: 'key-limit' };
     expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
   });
+  it('renders the amount over budget as a negative value', () => {
+    const c = ctx({ now: 0, openrouterWeekly: { source: 'account', balanceUsd: 0, budgetUsd: 25, spentUsd: 26.25, remainingUsd: 0, windowStartMs: 0, windowEndMs: 4 * 86400000 + 2 * 3600000 } });
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('-$1.25 4d2h');
+  });
   it('formats the countdown boundaries', () => {
     const c = ctx({ now: 0, openrouterWeekly: { source: 'account', balanceUsd: 1, budgetUsd: 25, spentUsd: 24, remainingUsd: 1, windowStartMs: 0, windowEndMs: 45 * 60000 } });
     expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBe('$1.00 45m');
@@ -81,6 +85,18 @@ describe('widgets', () => {
     const c = ctx({ openrouterWeekly: { source: 'account', balanceUsd: 1, budgetUsd: 25, spentUsd: 24, remainingUsd: Number.NaN, windowStartMs: 0, windowEndMs: 60000 } });
     expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
     c.openrouterWeekly = { ...c.openrouterWeekly, remainingUsd: Number.POSITIVE_INFINITY };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+  });
+  it('hides an account weekly balance when spent or budget is invalid', () => {
+    const c = ctx({ openrouterWeekly: { source: 'account', balanceUsd: 1, budgetUsd: 25, spentUsd: Number.NaN, remainingUsd: 1, windowStartMs: 0, windowEndMs: 60000 } });
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+    c.openrouterWeekly = { ...c.openrouterWeekly, spentUsd: Number.POSITIVE_INFINITY };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+    c.openrouterWeekly = { ...c.openrouterWeekly, spentUsd: 24, budgetUsd: Number.NaN };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+    c.openrouterWeekly = { ...c.openrouterWeekly, budgetUsd: Number.POSITIVE_INFINITY };
+    expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
+    c.openrouterWeekly = { ...c.openrouterWeekly, budgetUsd: 0 };
     expect(WIDGETS['openrouter-weekly'].render(c, { type: 'openrouter-weekly' })).toBeNull();
   });
   it('hides an account weekly balance when its countdown context is not finite', () => {

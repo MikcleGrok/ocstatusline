@@ -129,7 +129,7 @@ async function main(): Promise<void> {
 
     await plugin.tui(api as never);
     assert.ok(appBottom, 'production plugin did not register app_bottom');
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const setup = await testRender(() => appBottom!(), { width: 240, height: 4, footerHeight: 1 });
     renderer = setup.renderer;
     const expected = expectedCheckoutIdentity();
