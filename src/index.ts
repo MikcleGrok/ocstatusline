@@ -67,7 +67,7 @@ Commands:
                    config (~/.config/opencode) so it loads in every project. Works
                    both from a checked-out copy of this repo (files read off disk)
                    and from the standalone binary (plugin source embedded in it).
-  --version        Print the version and exit.
+  --version, -v    Print the version and exit.
   --help           Print this message and exit.
 
 Examples:
@@ -77,6 +77,7 @@ Examples:
   ocstatusline render --stdin < snapshot.json
   ocstatusline install
   ocstatusline --version
+  ocstatusline -v
 
 Config: ~/.config/ocstatusline/settings.json (created on first save).
 Docs:   https://github.com/MikcleGrok/ocstatusline
