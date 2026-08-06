@@ -1,13 +1,13 @@
 class Ocstatusline < Formula
   desc "Live, customizable status line for OpenCode (single-binary push daemon)"
   homepage "https://github.com/MikcleGrok/ocstatusline"
-  version "0.2.3"
+  version "0.2.4"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-arm64"
-      sha256 "ec85e8b7c50ee5fba066d727ec579e6d2b673a44282bc5d65848dbe565d45edb"
+      sha256 "3c282cc69ecc560c9a8fcc54dcc59a3233613812e182684498b3ef5f264d972e"
     else
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-x64"
       sha256 "bd383bd884f43c0029b152baab6246e72f1cdb7fbe02c2c698c3d70bc4a16848"
