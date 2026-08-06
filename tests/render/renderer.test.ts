@@ -61,6 +61,9 @@ describe('renderLines', () => {
     expect(renderLines(low, weekly)[0]).toContain('38;5;208');
     low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 5, remainingUsd: 20 };
     expect(renderLines(low, weekly)[0]).toContain('38;5;75');
+    low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 26.25, remainingUsd: 0 };
+    expect(renderLines(low, weekly)[0]).toContain('38;5;201');
+    expect(stripAnsi(renderLines(low, weekly)[0])).toContain('-$1.25');
   });
   it('renders an invalid weekly burn rate neutrally', () => {
     const weekly = { ...settings, colorLevel: 'ansi256' as const, lines: [[{ type: 'openrouter-weekly', color: 124 }]] };
@@ -74,11 +77,11 @@ describe('renderLines', () => {
   });
   it('renders distinct threshold escapes at every color level', () => {
     const low = { ...ctx(), now: 500, openrouterWeekly: { source: 'account' as const, balanceUsd: 2, budgetUsd: 25, spentUsd: 20, remainingUsd: 5, windowStartMs: 0, windowEndMs: 1000 } };
-    for (const [colorLevel, critical, warning, healthy] of [
-      ['ansi16', '\x1b[31m', '\x1b[33m', '\x1b[34m'],
-      ['ansi256', '38;5;124', '38;5;208', '38;5;75'],
-      ['truecolor', '38;2;175;0;0', '38;2;255;0;0', '38;2;95;175;215'],
-    ] as const) {
+     for (const [colorLevel, critical, warning, healthy, overBudget] of [
+       ['ansi16', '\x1b[31m', '\x1b[33m', '\x1b[34m', '\x1b[35m'],
+       ['ansi256', '38;5;124', '38;5;208', '38;5;75', '38;5;201'],
+       ['truecolor', '38;2;175;0;0', '38;2;255;0;0', '38;2;95;175;215', '38;2;220;20;60'],
+     ] as const) {
       const weekly = { ...settings, colorLevel, lines: [[{ type: 'openrouter-weekly' }]] };
       const criticalLine = renderLines(low, weekly)[0];
       low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 15, remainingUsd: 10 };
@@ -86,7 +89,9 @@ describe('renderLines', () => {
       expect(criticalLine).toContain(critical);
       expect(warningLine).toContain(warning);
       low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 5, remainingUsd: 20 };
-      expect(renderLines(low, weekly)[0]).toContain(healthy);
+       expect(renderLines(low, weekly)[0]).toContain(healthy);
+       low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 26.25, remainingUsd: 0 };
+       expect(renderLines(low, weekly)[0]).toContain(overBudget);
       expect(criticalLine).not.toBe(warningLine);
       low.openrouterWeekly = { ...low.openrouterWeekly, spentUsd: 20, remainingUsd: 5 };
     }

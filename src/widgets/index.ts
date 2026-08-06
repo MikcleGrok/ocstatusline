@@ -35,8 +35,9 @@ const widgets: Widget[] = [
   { type: 'cost', label: 'Cost', render: (c) => c.derived.cost > 0 ? `$${c.derived.cost.toFixed(2)}` : '$0.00' },
   { type: 'openrouter-weekly', label: 'OpenRouter Weekly', render: (c) => {
     const weekly = c.openrouterWeekly;
-    if (weekly.source !== 'account' || !Number.isFinite(weekly.remainingUsd) || !Number.isFinite(weekly.windowEndMs) || !Number.isFinite(c.now)) return null;
-    return `$${weekly.remainingUsd.toFixed(2)} ${fmtCountdown(weekly.windowEndMs - c.now)}`;
+    if (weekly.source !== 'account' || !Number.isFinite(weekly.remainingUsd) || !Number.isFinite(weekly.spentUsd) || !Number.isFinite(weekly.budgetUsd) || weekly.budgetUsd <= 0 || !Number.isFinite(weekly.windowEndMs) || !Number.isFinite(c.now)) return null;
+     const displayedUsd = weekly.spentUsd > weekly.budgetUsd ? weekly.budgetUsd - weekly.spentUsd : weekly.remainingUsd;
+     return `${displayedUsd < 0 ? '-$' : '$'}${Math.abs(displayedUsd).toFixed(2)} ${fmtCountdown(weekly.windowEndMs - c.now)}`;
   } },
   { type: 'tokens', label: 'Tokens (total)', render: (c) => fmtK(c.derived.totalTokens) },
   { type: 'context-length', label: 'Context Length', render: (c) => fmtK(c.derived.contextTokens) },

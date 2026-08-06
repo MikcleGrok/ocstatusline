@@ -25,7 +25,15 @@ describe('OpenRouter weekly window', () => {
     const state = { source: 'account' as const, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 100 };
     expect(weeklyBalanceSeverity({ ...state, spentUsd: 64.999 / 100 * 25, remainingUsd: 8.75 }, 50)).toBe('orange');
     expect(weeklyBalanceSeverity({ ...state, spentUsd: 65 / 100 * 25, remainingUsd: 8.75 }, 50)).toBe('dark-red');
-    expect(weeklyBalanceSeverity({ ...state, spentUsd: 29, remainingUsd: 0 }, 100)).toBe('dark-red');
+    expect(weeklyBalanceSeverity({ ...state, spentUsd: 29, remainingUsd: 0 }, 100)).toBe('over-budget');
+  });
+
+  it('classifies spend above the budget as over-budget at every window boundary', () => {
+    const state = { source: 'account' as const, budgetUsd: 25, spentUsd: 25.01, remainingUsd: 0, windowStartMs: 0, windowEndMs: 100 };
+    expect(weeklyBalanceSeverity(state, 0)).toBe('over-budget');
+    expect(weeklyBalanceSeverity(state, 50)).toBe('over-budget');
+    expect(weeklyBalanceSeverity(state, 100)).toBe('over-budget');
+    expect(weeklyBalanceSeverity({ ...state, spentUsd: 25 }, 100)).toBe('muted-green');
   });
 
   it('handles the beginning, end, rollover, and the 16.07 dollar example', () => {

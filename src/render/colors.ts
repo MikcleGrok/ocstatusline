@@ -11,6 +11,7 @@ const DYNAMIC_COLORS: Record<number, { ansi16: number; rgb: [number, number, num
   71: { ansi16: 32, rgb: [95, 175, 95] },
   208: { ansi16: 33, rgb: [255, 0, 0] },
   124: { ansi16: 31, rgb: [175, 0, 0] },
+  201: { ansi16: 35, rgb: [220, 20, 60] },
 };
 
 function hexToRgb(hex: string): [number, number, number] | null {
