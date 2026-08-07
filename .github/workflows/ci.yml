@@ -17,8 +17,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run the same targets as a local run
-        run: make ci-test
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Unit and fast tests
+        run: make test-unit
+
+      - name: Functional Bun tests
+        run: make test-functional
+
+      - name: Native TUI acceptance
+        run: make acceptance-tui
+
+      - name: Compiled artifact smoke
+        run: make smoke
 
       - name: Collect container logs
         if: always()
