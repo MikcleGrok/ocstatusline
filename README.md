@@ -395,6 +395,7 @@ make smoke           # run the compiled binary: --version, live render, pty TUI,
 make mock-up         # start the fixture-playback OpenCode mock
 make ci-test         # exactly what CI runs
 make release         # gates + all targets + SHA256SUMS
+make release-check TAG=v0.2.5 # pre-tag candidate gate; does not publish
 make clean           # drop the cache volumes and ./build
 ```
 
