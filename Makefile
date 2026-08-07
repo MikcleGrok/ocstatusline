@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help env image install lock typecheck test test-watch acceptance-tui sh run config up down clean \
+.PHONY: help env image install lock typecheck test test-unit test-functional test-acceptance test-all test-watch acceptance-tui sh run config up down clean \
         generate-tui-plugin-assets \
         build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui smoke-install \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
@@ -119,8 +119,18 @@ else
 VITEST := bunx vitest
 endif
 
-test: install ## Run the vitest suite inside the toolchain image
-	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose
+test: test-unit ## Run the fast unit suite inside the toolchain image
+
+test-unit: install ## Run unit, render and data tests without process/acceptance boundaries
+	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose --exclude='tests/acceptance/**' --exclude='tests/mock/**' --exclude='tests/tui/openrouter.test.ts'
+
+test-functional: install ## Run Bun process and transport functional tests
+	$(DC) run --rm --no-deps test-runner bun run tests/acceptance/cli.acceptance.ts
+	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose tests/mock tests/tui/openrouter.test.ts tests/render/stdin.test.ts
+
+test-acceptance: acceptance-tui smoke ## Run native TUI and compiled artifact acceptance
+
+test-all: test-unit test-functional test-acceptance ## Run every required local test level
 
 test-watch: install ## Run the vitest suite in watch mode inside the toolchain image
 	$(DC) run --rm --no-deps test-runner $(VITEST)
@@ -216,7 +226,8 @@ release: env ## Full release build: deps, gates, tests, smoke, every target, che
 	$(MAKE) typecheck
 	$(MAKE) acceptance-tui
 	$(MAKE) check-yoga
-	$(MAKE) test
+	$(MAKE) test-unit
+	$(MAKE) test-functional
 	$(MAKE) smoke
 	$(MAKE) build-all
 	$(MAKE) manifest
@@ -227,7 +238,7 @@ release: env ## Full release build: deps, gates, tests, smoke, every target, che
 # CI helpers
 # ==============================================================================
 
-ci-test: image install typecheck acceptance-tui test smoke ## What CI runs: make ci-test
+ci-test: image install typecheck test-unit test-functional acceptance-tui smoke ## What CI runs: all mandatory gates in order
 
 ci-down: ## CI tear-down: stop stack, keep volumes for inspection
 	$(DC) down --remove-orphans
