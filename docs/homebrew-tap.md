@@ -71,10 +71,12 @@ They vanish the moment real per-platform hashes are pasted in, so the
 manual release flow is the fix rather than rubocop disables (which
 Homebrew's Formula style prohibits).
 
-There is no automation script yet for this step — the Formula is small,
-the SHA256SUMS file lives next to the binaries, and the change is a
-5-line diff that is easy to review in a PR. Add an `update-formula.sh`
-helper if the manual flow ever gets in the way.
+Run `make check-homebrew-formula TAG=v<version>` after `make build-all` and
+before publishing or reinstalling. It fails closed when the formula version is
+stale, `build/SHA256SUMS` is absent, an asset is missing, or any formula checksum
+differs from the local release manifest. Tap publication is external and remains
+a required manual action; local verification does not prove that the public tap
+has been updated.
 
 ---
 

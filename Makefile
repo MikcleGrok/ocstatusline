@@ -4,7 +4,7 @@
         build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui smoke-install \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
         ci-test ci-down ci-logs sync-upstream sync-verify \
-        brew-info brew-audit
+        brew-info brew-audit check-homebrew-formula
 
 SHELL := /bin/bash
 
@@ -172,6 +172,9 @@ probe-targets: image ## Probe which bun --compile targets this pinned Bun actual
 
 manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
 	$(DC) run --rm --no-deps builder bash -lc 'cd /out && rm -f SHA256SUMS && sha256sum ocstatusline-* > SHA256SUMS && cat SHA256SUMS'
+
+check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
+	bash scripts/verify-distribution.sh --tag "$(TAG)"
 
 check-musl: build-linux ## Answer "are -musl targets needed": run the glibc binary on Alpine
 	docker run --rm -v "$(CURDIR)/build:/out:ro" alpine:3.20 /out/$(LINUX_BIN) --version

@@ -419,3 +419,6 @@ Inspired by and modeled after [ccstatusline](https://github.com/sirmalloc/ccstat
 ## License
 
 [MIT](./LICENSE)
+Prebuilt Homebrew assets и `SHA256SUMS` проверяются через
+`scripts/verify-distribution.sh` и общий verifier из `guide-tools`; внешний tap не
+изменяется автоматически.
