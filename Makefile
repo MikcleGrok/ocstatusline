@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help env image install lock typecheck test test-unit test-functional test-acceptance test-all test-watch acceptance-tui sh run config up down clean \
         generate-tui-plugin-assets \
-        build build-linux build-all manifest release smoke smoke-cli smoke-daemon smoke-tui smoke-install \
+        build build-linux build-all manifest release release-check smoke smoke-cli smoke-daemon smoke-tui smoke-install \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
         ci-test ci-down ci-logs sync-upstream sync-verify \
         brew-info brew-audit check-homebrew-formula
@@ -236,6 +236,16 @@ release: env ## Full release build: deps, gates, tests, smoke, every target, che
 	$(MAKE) manifest
 	@echo ">> release artifacts for $(VERSION):"
 	@ls -l build/
+
+release-check: ## Validate a planned release without creating a tag or publishing
+	@test -n "$(TAG)" || { echo "ERROR: TAG is required, for example TAG=v0.2.5" >&2; exit 2; }
+	@test "$(TAG)" != "$$(git describe --exact-match --tags HEAD 2>/dev/null || true)" || { echo "ERROR: TAG already points at HEAD; pre-tag check requires a planned, uncreated tag" >&2; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "ERROR: release-check requires a clean worktree" >&2; git status --short >&2; exit 1; }
+	case "$(TAG)" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "ERROR: TAG must match vMAJOR.MINOR.PATCH" >&2; exit 1;; esac
+	@test -f build/SHA256SUMS || { echo "ERROR: build/SHA256SUMS is missing; run make manifest" >&2; exit 1; }
+	for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64; do test -x "build/$$asset" || { echo "ERROR: missing or non-executable build/$$asset" >&2; exit 1; }; done
+	( cd build && sha256sum -c SHA256SUMS )
+	@echo ">> release-check passed for $(TAG)"
 
 # ==============================================================================
 # CI helpers
