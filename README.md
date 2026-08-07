@@ -395,6 +395,7 @@ make smoke           # run the compiled binary: --version, live render, pty TUI,
 make mock-up         # start the fixture-playback OpenCode mock
 make ci-test         # exactly what CI runs
 make release         # gates + all targets + SHA256SUMS
+make release-check TAG=v0.2.5 # pre-tag candidate gate; does not publish
 make clean           # drop the cache volumes and ./build
 ```
 
@@ -419,3 +420,6 @@ Inspired by and modeled after [ccstatusline](https://github.com/sirmalloc/ccstat
 ## License
 
 [MIT](./LICENSE)
+Prebuilt Homebrew assets и `SHA256SUMS` проверяются через
+`scripts/verify-distribution.sh` и общий verifier из `guide-tools`; внешний tap не
+изменяется автоматически.

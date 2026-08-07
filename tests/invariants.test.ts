@@ -93,6 +93,14 @@ describe('process-spawning invariants', () => {
 });
 
 describe('install invariants', () => {
+  it('keeps test levels explicit and rejects no-op aliases', () => {
+    expect(makefile).not.toMatch(/^test-(?:integration|e2e)\s*:/m);
+    for (const target of ['test-unit', 'test-functional', 'test-acceptance', 'test-all']) {
+      expect(makefile.split(/\r?\n/).some((line) => line.startsWith(`${target}:`)), `${target} target`).toBe(true);
+    }
+    expect(makefile).toMatch(/ci-test:[^\n]*\btest-unit\b[^\n]*\btest-functional\b[^\n]*\bacceptance-tui\b[^\n]*\bsmoke\b/);
+  });
+
   it('installs root and project-local dependencies in that order', () => {
     const installRecipe = makeRecipe(makefile, 'install');
     const rootInstall = '$(DC) run --rm --no-deps builder bun install --frozen-lockfile';
@@ -131,7 +139,7 @@ describe('install invariants', () => {
 
   it('keeps CI and release workflows on the CI compose selection', () => {
     expect(makefile).toMatch(/ifeq \(\$\(CI\),true\)[\s\S]*?DC := docker compose -f docker-compose\.yaml -f docker-compose\.ci\.override\.yaml/);
-    expect(ciWorkflow).toMatch(/^\s*run: make ci-test\s*$/m);
+    expect(ciWorkflow).toMatch(/^\s*run: make test-unit\s*$/m);
     const releaseJob = topLevelBlock(releaseWorkflow, 'release', 2).join('\n');
     expect(workflowEnv(releaseJob).join('\n')).toMatch(/^\s+CI:\s*true\s*$/m);
     expect(releaseJob).toMatch(/^\s+- name: Build every target, run the gates, write the manifest\s*$[\s\S]*?^\s+run: make release\s*$/m);
@@ -142,7 +150,7 @@ describe('install invariants', () => {
     expect(acceptanceRecipe.some((line) => line.includes('timeout --foreground --kill-after='))).toBe(true);
     expect(makefile).toContain('$(DC) run --rm --no-deps --workdir /src/.opencode test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts');
     expect(makefile).toContain('OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline');
-    expect(makefile).toMatch(/ci-test:[^\n]*\bacceptance-tui\b[^\n]*\btest\b[^\n]*\bsmoke\b/);
+    expect(makefile).toMatch(/ci-test:[^\n]*\bacceptance-tui\b[^\n]*\bsmoke\b/);
     const releaseRecipe = makeRecipe(makefile, 'release');
     expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeGreaterThanOrEqual(0);
     expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) smoke'));
