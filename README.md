@@ -97,6 +97,26 @@ make help             # every available target
 
 ---
 
+## Applicability and onboarding record
+
+| Field | Value |
+| --- | --- |
+| `project type` | Bun/TypeScript CLI, live daemon, config TUI and four-platform standalone binary |
+| `active profiles` | CLI, TUI, daemon/service, publishable binary and Homebrew distribution |
+| `not applicable` | npm package runtime, container runtime image and server-side deployment |
+| `supported targets` | `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`; smoke uses the local Docker engine platform |
+| `build/test entrypoint` | GNU make targets backed by Docker Compose; start with `make help` and `make ci-test` |
+| `toolchain reference` | `BUN_BASE_IMAGE_REF` in `.env.dist`, pinned to an immutable Docker manifest digest; `BUN_VERSION` is updated with it |
+| `release channels` | GitHub Release assets, Homebrew formula and offline `dist/local-release/` bundle |
+| `release checks` | `make release` builds all targets, runs typecheck/tests/TUI and binary smoke, and writes `SHA256SUMS`; no provenance signer is configured |
+| `owners` | repository maintainer owns build, release and security decisions |
+| `review trigger` | review this record when targets, distribution channel, toolchain reference or release checks change |
+
+The Docker base digest is a controlled pin, not a claim that the image is
+reproducible without verification. When upgrading Bun, resolve the new
+multi-platform manifest digest, update `BUN_VERSION` and `BUN_BASE_IMAGE_REF`
+together, then run `make image` and the fast checks before committing.
+
 ## Usage
 
 ### Configure (interactive TUI)
@@ -203,7 +223,7 @@ session cost, timer и прочие widgets; custom footer их не дубли�
 Для запуска plugin из checkout:
 
 ```bash
-cd /Users/sergey/projects/ocstatusline
+cd /path/to/ocstatusline
 npm install --prefix .opencode --no-audit --no-fund
 opencode
 ```
@@ -395,8 +415,8 @@ make smoke           # run the compiled binary: --version, live render, pty TUI,
 make mock-up         # start the fixture-playback OpenCode mock
 make ci-test         # exactly what CI runs
 make release         # gates + all targets + SHA256SUMS
-make release-check TAG=v0.2.5 # pre-tag candidate gate; does not publish
-make release-local TAG=v0.2.5   # exact clean tag: local binaries/source/manifest/notes
+make release-check TAG=v0.2.6 # pre-tag candidate gate; does not publish
+make release-local TAG=v0.2.6   # exact clean tag: local binaries/source/manifest/notes
 make clean           # drop the cache volumes and ./build
 ```
 
@@ -438,5 +458,5 @@ Inspired by and modeled after [ccstatusline](https://github.com/sirmalloc/ccstat
 
 [MIT](./LICENSE)
 Prebuilt Homebrew assets и `SHA256SUMS` проверяются через
-`scripts/verify-distribution.sh` и общий verifier из `guide-tools`; внешний tap не
+`scripts/check-homebrew-formula.sh` и общий verifier из `guide-tools`; внешний tap не
 изменяется автоматически.
