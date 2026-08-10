@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { createDaemonProjectStatusCache } from '../src/daemon.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createDaemonProjectStatusCache, registerDaemonShutdown } from '../src/daemon.js';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 describe('daemon project status cache', () => {
   it('starts the new cwd while the old read is pending and ignores the old result', async () => {
@@ -26,5 +31,32 @@ describe('daemon project status cache', () => {
     expect(cache.get('/project-a').productionVersion).toBeNull();
     await second;
     expect(cache.get('/project-b').productionVersion).toBe('2.0.0');
+  });
+
+  it('shuts down once when SIGINT and SIGTERM are both delivered', () => {
+    vi.useFakeTimers();
+    const stop = vi.fn();
+    const close = vi.fn();
+    const timers = [setInterval(() => {}, 60_000), setInterval(() => {}, 60_000), setInterval(() => {}, 60_000)];
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const sigintBefore = process.listeners('SIGINT');
+    const sigtermBefore = process.listeners('SIGTERM');
+
+    registerDaemonShutdown({ timers, stop, close, timeoutMs: 60_000 });
+    expect(process.listenerCount('SIGINT')).toBe(sigintBefore.length + 1);
+    expect(process.listenerCount('SIGTERM')).toBe(sigtermBefore.length + 1);
+
+    process.emit('SIGINT');
+    process.emit('SIGTERM');
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
+    expect(clearIntervalSpy).toHaveBeenCalledTimes(timers.length);
+    expect(clearTimeoutSpy).toHaveBeenCalledOnce();
+    expect(exit).toHaveBeenCalledOnce();
+    expect(process.listeners('SIGINT')).toEqual(sigintBefore);
+    expect(process.listeners('SIGTERM')).toEqual(sigtermBefore);
   });
 });

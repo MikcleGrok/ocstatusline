@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { readProjectStatus, readProjectStatusCachedSync, readProjectStatusSync } from '../../src/data/project-status.js';
+import { MAX_STATUS_CACHE_ENTRIES, readProjectStatus, readProjectStatusCachedSync, readProjectStatusSync } from '../../src/data/project-status.js';
 
 let roots: string[] = [];
 afterEach(() => { for (const root of roots) rmSync(root, { recursive: true, force: true }); roots = []; });
@@ -38,6 +38,21 @@ describe('project status reader', () => {
     expect(readProjectStatusCachedSync(cwd).productionVersion).toBe('1.0.0');
     await expect(readProjectStatus(cwd)).resolves.toMatchObject({ productionVersion: '2.0.0' });
     expect(readProjectStatusCachedSync(cwd).productionVersion).toBe('2.0.0');
+  });
+
+  it('evicts the oldest cached missing-status cwd', async () => {
+    const cwds: string[] = [];
+    for (let i = 0; i <= MAX_STATUS_CACHE_ENTRIES; i++) {
+      const root = mkdtempSync(join(tmpdir(), 'ocsl-missing-'));
+      roots.push(root);
+      const cwd = join(root, 'packages/app');
+      mkdirSync(cwd, { recursive: true });
+      cwds.push(cwd);
+      await expect(readProjectStatus(cwd)).resolves.toEqual({ productionVersion: null, root: null });
+    }
+    mkdirSync(join(cwds[0], '.status'), { recursive: true });
+    writeFileSync(join(cwds[0], '.status/state.json'), '{"production":{"version":"evicted"}}');
+    expect(readProjectStatusCachedSync(cwds[0]).productionVersion).toBe('evicted');
   });
 
 });

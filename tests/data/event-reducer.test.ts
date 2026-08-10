@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reduce } from '../../src/data/event-reducer';
+import { MAX_MESSAGE_ENTRIES, reduce } from '../../src/data/event-reducer';
 import { emptyState } from '../../src/types/index';
 
 function assistantMsg(id: string, over: any = {}) {
@@ -35,6 +35,22 @@ describe('reduce', () => {
     s = reduce(s, assistantMsg('m2', { cost: 0.02, time: { created: 2000 } }));
     expect(Object.keys(s.byMessage)).toHaveLength(2);
     expect(s.sessionStart).toBe(1000); // earliest wins
+  });
+  it('bounds message retention while keeping the latest aggregate', () => {
+    let s = emptyState();
+    for (let i = 0; i <= MAX_MESSAGE_ENTRIES; i++) s = reduce(s, assistantMsg(`m${i}`, { time: { created: i }, cost: 1 }));
+    expect(Object.keys(s.byMessage)).toHaveLength(MAX_MESSAGE_ENTRIES);
+    expect(s.byMessage.m0).toBeUndefined();
+    expect(s.latestAssistantID).toBe(`m${MAX_MESSAGE_ENTRIES}`);
+    expect(s.byMessage[`m${MAX_MESSAGE_ENTRIES}`].cost).toBe(1);
+  });
+  it('uses delivery order for FIFO eviction, regardless of message timestamps', () => {
+    let s = emptyState();
+    for (let i = 0; i < MAX_MESSAGE_ENTRIES; i++) s = reduce(s, assistantMsg(`m${i}`, { time: { created: i } }));
+    s = reduce(s, assistantMsg('delivered-last', { time: { created: 0 } }));
+    expect(s.byMessage.m0).toBeUndefined();
+    expect(s.byMessage['delivered-last']).toBeDefined();
+    expect(s.latestAssistantID).toBe('delivered-last');
   });
   it('session.idle sets idle true; message activity sets idle false', () => {
     let s = reduce(emptyState(), assistantMsg('m1'));
