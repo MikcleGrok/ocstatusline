@@ -7,20 +7,20 @@ class Ocstatusline < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-arm64"
-      sha256 "464fee7786b56f54e90534fef7dfb80eebea33c8a3dcae8b613fb430e0fe78eb"
+      sha256 "ca3bf2a5625a8be3b74491149daa2ba6a0f923fe7da0cfa7c4057525d188d4e7"
     else
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-x64"
-      sha256 "affa560e53bf46ef64e8a09fd4ae55c098d80a1beac0be83f1e7f3f12a30e30b"
+      sha256 "3980052430d5798897e6ea32e54447fd5776442a92206f5b20c31d871f30a17f"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-arm64"
-      sha256 "0b1134be1f5b07e1c8da6b14246449cc19efa1e593ea13a1827a5df5f2256998"
+      sha256 "ab736f4ce42c91ce4253aa6b7c78f5fcdf49c2a383dea989b2b4a456d3fc74d8"
     else
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-x64"
-      sha256 "a40efb4d613ea9e4ae5f9ce2583c1ee92db470f699182fae134fe9bd47d4fb5e"
+      sha256 "0f4460682ecd477364df34b01915db3a1f48d1c70f8bf1d8b2a763b6842db9a7"
     end
   end
 
