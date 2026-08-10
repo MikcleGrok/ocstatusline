@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 const STATUS_FILE = '.status/state.json';
+export const MAX_STATUS_CACHE_ENTRIES = 256;
 
 export interface ProjectStatus {
   productionVersion: string | null;
@@ -11,6 +12,12 @@ export interface ProjectStatus {
 
 const EMPTY_STATUS: ProjectStatus = { productionVersion: null, root: null };
 const statusCache = new Map<string, ProjectStatus>();
+
+function cacheStatus(key: string, status: ProjectStatus): ProjectStatus {
+  statusCache.set(key, status);
+  while (statusCache.size > MAX_STATUS_CACHE_ENTRIES) statusCache.delete(statusCache.keys().next().value as string);
+  return status;
+}
 
 function safeVersion(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -72,8 +79,7 @@ export function readProjectStatusCachedSync(cwd: string | null): ProjectStatus {
   const cached = statusCache.get(key);
   if (cached) return cached;
   const status = readProjectStatusSync(key);
-  statusCache.set(key, status);
-  return status;
+  return cacheStatus(key, status);
 }
 
 export async function readProjectStatus(cwd: string | null): Promise<ProjectStatus> {
@@ -81,16 +87,13 @@ export async function readProjectStatus(cwd: string | null): Promise<ProjectStat
   const root = await findStatusRoot(cwd);
   if (!root) {
     const status = { ...EMPTY_STATUS, root: null };
-    statusCache.set(resolve(cwd), status);
-    return status;
+    return cacheStatus(resolve(cwd), status);
   }
   try {
     const status = parseStatus(await readFile(join(root, STATUS_FILE), 'utf8'), root);
-    statusCache.set(resolve(cwd), status);
-    return status;
+    return cacheStatus(resolve(cwd), status);
   } catch {
     const status = { ...EMPTY_STATUS, root };
-    statusCache.set(resolve(cwd), status);
-    return status;
+    return cacheStatus(resolve(cwd), status);
   }
 }

@@ -1,5 +1,6 @@
 import type { OpencodeState, MsgAgg } from '../types/index.js';
 import { zeroTokens } from '../types/index.js';
+import { MAX_MESSAGE_ENTRIES, retainLatestEntries } from './retention.js';
 
 export function reduce(state: OpencodeState, event: any): OpencodeState {
   const type: string = event?.type;
@@ -19,7 +20,7 @@ export function reduce(state: OpencodeState, event: any): OpencodeState {
       modelID: info.modelID, providerID: info.providerID, mode: info.mode,
       cwd: info.path?.cwd, created: info.time?.created ?? Date.now(),
     };
-    const byMessage = { ...state.byMessage, [info.id]: agg };
+    const byMessage = retainLatestEntries<MsgAgg>({ ...state.byMessage, [info.id]: agg }, MAX_MESSAGE_ENTRIES, info.id);
     const sessionStart = state.sessionStart === null ? agg.created : Math.min(state.sessionStart, agg.created);
     return { ...state, byMessage, latestAssistantID: info.id, sessionStart, idle: false, lastUpdate: Date.now() };
   }
@@ -29,3 +30,4 @@ export function reduce(state: OpencodeState, event: any): OpencodeState {
 }
 
 export { zeroTokens };
+export { MAX_MESSAGE_ENTRIES };

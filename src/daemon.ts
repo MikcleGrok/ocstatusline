@@ -50,6 +50,32 @@ function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, 
   prevLineCount = lines.length;
 }
 
+export function registerDaemonShutdown(opts: {
+  timers: Array<ReturnType<typeof setInterval>>;
+  stop: () => void;
+  close: () => void;
+  timeoutMs?: number;
+}): void {
+  let shuttingDown = false;
+  let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    for (const timer of opts.timers) clearInterval(timer);
+    if (timeoutTimer) clearTimeout(timeoutTimer);
+    process.off('SIGINT', shutdown);
+    process.off('SIGTERM', shutdown);
+    opts.stop();
+    opts.close();
+    process.stdout.write('\n');
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+
+  if (opts.timeoutMs && opts.timeoutMs > 0) timeoutTimer = setTimeout(shutdown, opts.timeoutMs);
+}
+
 export async function runDaemon(opts: { serverUrl?: string; timeoutMs?: number }): Promise<void> {
   const settings = loadSettings();
   const getLimit = loadLimitLookup();
@@ -94,11 +120,5 @@ export async function runDaemon(opts: { serverUrl?: string; timeoutMs?: number }
   void refreshBalance();
   refreshProjectStatusAndRender();
 
-  const shutdown = () => { clearInterval(tick); clearInterval(projectStatusTick); clearInterval(balanceTick); stop(); conn.close(); process.stdout.write('\n'); process.exit(0); };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-
-  if (timeoutMs && timeoutMs > 0) {
-    setTimeout(shutdown, timeoutMs);
-  }
+  registerDaemonShutdown({ timers: [tick, projectStatusTick, balanceTick], stop, close: conn.close, timeoutMs });
 }

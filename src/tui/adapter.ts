@@ -3,6 +3,7 @@ import { buildRenderContext } from '../render/context.js';
 import { stripAnsi } from '../render/ansi.js';
 import { renderLines } from '../render/renderer.js';
 import { emptyState, type MsgAgg, type OpencodeState, type Settings } from '../types/index.js';
+import { MAX_MESSAGE_ENTRIES, retainLatestEntries } from '../data/retention.js';
 
 export interface TuiRouteLike {
   name?: unknown;
@@ -70,7 +71,7 @@ export function stateFromTuiMessages(messages: readonly TuiAssistantMessage[], s
   }
   state.connected = true;
   state.idle = status === 'idle' || status === 'error' || status === 'completed';
-  state.byMessage = byMessage;
+   state.byMessage = retainLatestEntries(byMessage, MAX_MESSAGE_ENTRIES, latest?.id);
   state.latestAssistantID = latest?.id ?? null;
   state.sessionStart = sessionStart;
   state.lastUpdate = now;

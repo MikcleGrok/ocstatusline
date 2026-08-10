@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { assistantMessageToAgg, renderTuiFooter, sessionIDFromRoute, stateFromTuiMessages } from '../../src/tui/adapter.js';
 import { defaultSettings } from '../../src/utils/config.js';
+import { MAX_MESSAGE_ENTRIES } from '../../src/data/retention.js';
 
 describe('TUI adapter', () => {
   it('normalizes only session routes with a session id', () => {
@@ -26,6 +27,14 @@ describe('TUI adapter', () => {
     expect(state.latestAssistantID).toBe('one');
     expect(state.sessionStart).toBe(10);
     expect(state.idle).toBe(true);
+  });
+
+  it('bounds messages loaded into state while retaining the latest item', () => {
+    const state = stateFromTuiMessages([{ id: 'latest', sessionID: 'ses_1', role: 'assistant', time: { created: MAX_MESSAGE_ENTRIES + 1 } }, ...Array.from({ length: MAX_MESSAGE_ENTRIES }, (_, index) => ({ id: `msg_${index}`, sessionID: 'ses_1', role: 'assistant', time: { created: index } }))], 'ses_1', 'idle', 30);
+    expect(Object.keys(state.byMessage)).toHaveLength(MAX_MESSAGE_ENTRIES);
+    expect(state.byMessage.msg_0).toBeUndefined();
+    expect(state.byMessage.latest).toBeDefined();
+    expect(state.latestAssistantID).toBe('latest');
   });
 
   it('renders a neutral footer on the home route', () => {
