@@ -2,6 +2,7 @@
 .PHONY: help env image install lock typecheck test test-unit test-functional test-acceptance test-all test-watch acceptance-tui sh run config up down clean \
         generate-tui-plugin-assets \
         build build-linux build-all manifest release release-check smoke smoke-cli smoke-daemon smoke-tui smoke-install \
+        release-local local-release validate-tag validate-version \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
         ci-test ci-down ci-logs sync-upstream sync-verify \
         brew-info brew-audit check-homebrew-formula
@@ -23,6 +24,7 @@ HOST_GID := $(shell id -g)
 
 BASETAG := $(shell bash .builder/basetag.sh)
 VERSION := $(shell git describe --tags --always --dirty)
+export TAG VERSION
 
 CI_JOB_ID ?= local
 
@@ -144,17 +146,24 @@ acceptance-tui: install ## Run the production OpenTUI plugin through the native 
 
 EXTRA_FLAGS ?= --minify
 
-build: install ## Compile the binary for the developer's own platform into ./build
-	@mkdir -p build
-	$(DC) run --rm --no-deps -e VERSION="$(VERSION)" -e TARGETS="$(HOST_TARGET)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
+validate-tag:
+	@test -n "$${TAG:-}" || { echo "ERROR: TAG is required and must be a safe SemVer vMAJOR.MINOR.PATCH" >&2; exit 2; }
+	@[[ "$${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$$ ]] || { echo "ERROR: TAG must be a safe SemVer vMAJOR.MINOR.PATCH" >&2; exit 1; }
 
-build-linux: install ## Compile the binary for the local Docker engine's platform (what smoke runs)
-	@mkdir -p build
-	$(DC) run --rm --no-deps -e VERSION="$(VERSION)" -e TARGETS="$(LINUX_TARGET)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
+validate-version:
+	@[[ "$${VERSION}" =~ ^[A-Za-z0-9._+-]+$$ ]] || { echo "ERROR: VERSION contains unsafe characters" >&2; exit 1; }
 
-build-all: install ## Cross-compile every release target into ./build
+build: validate-version install ## Compile the binary for the developer's own platform into ./build
 	@mkdir -p build
-	$(DC) run --rm --no-deps -e VERSION="$(VERSION)" -e TARGETS="$(RELEASE_TARGETS)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
+	$(DC) run --rm --no-deps -e VERSION="$${VERSION}" -e TARGETS="$(HOST_TARGET)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
+
+build-linux: validate-version install ## Compile the binary for the local Docker engine's platform (what smoke runs)
+	@mkdir -p build
+	$(DC) run --rm --no-deps -e VERSION="$${VERSION}" -e TARGETS="$(LINUX_TARGET)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
+
+build-all: validate-version install ## Cross-compile every release target into ./build
+	@mkdir -p build
+	$(DC) run --rm --no-deps -e VERSION="$${VERSION}" -e TARGETS="$(RELEASE_TARGETS)" -e EXTRA_FLAGS="$(EXTRA_FLAGS)" builder bash /src/.builder/build-inside.sh
 
 # ==============================================================================
 # Dependency guards (answers the spec's open questions mechanically)
@@ -171,10 +180,10 @@ probe-targets: image ## Probe which bun --compile targets this pinned Bun actual
 # ==============================================================================
 
 manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
-	$(DC) run --rm --no-deps builder bash -lc 'cd /out && rm -f SHA256SUMS && sha256sum ocstatusline-* > SHA256SUMS && cat SHA256SUMS'
+	$(DC) run --rm --no-deps builder bash -lc 'cd /out && sha256sum ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64 > SHA256SUMS && cat SHA256SUMS'
 
 check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
-	bash scripts/verify-distribution.sh --tag "$(TAG)"
+	bash scripts/verify-distribution.sh
 
 check-musl: build-linux ## Answer "are -musl targets needed": run the glibc binary on Alpine
 	docker run --rm -v "$(CURDIR)/build:/out:ro" alpine:3.20 /out/$(LINUX_BIN) --version
@@ -224,7 +233,7 @@ record-fixture: install ## Re-record an event fixture from a live server: make r
 # Release
 # ==============================================================================
 
-release: env ## Full release build: deps, gates, tests, smoke, every target, checksum manifest
+release: validate-version env ## Full release build: deps, gates, tests, smoke, every target, checksum manifest
 	$(MAKE) install
 	$(MAKE) typecheck
 	$(MAKE) acceptance-tui
@@ -237,15 +246,20 @@ release: env ## Full release build: deps, gates, tests, smoke, every target, che
 	@echo ">> release artifacts for $(VERSION):"
 	@ls -l build/
 
-release-check: ## Validate a planned release without creating a tag or publishing
-	@test -n "$(TAG)" || { echo "ERROR: TAG is required, for example TAG=v0.2.5" >&2; exit 2; }
-	@test "$(TAG)" != "$$(git describe --exact-match --tags HEAD 2>/dev/null || true)" || { echo "ERROR: TAG already points at HEAD; pre-tag check requires a planned, uncreated tag" >&2; exit 1; }
+release-local local-release: validate-tag ## Build a clean exact-tag release into dist/local-release/<version>
+	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse --verify "refs/tags/$${TAG}^{commit}" 2>/dev/null)" || { echo "ERROR: release-local requires TAG to point exactly at HEAD" >&2; exit 1; }
+	@test -z "$$(git status --porcelain)" || { echo "ERROR: release-local requires a clean worktree" >&2; git status --short >&2; exit 1; }
+	SOURCE_DATE_EPOCH="$$(git show -s --format=%ct HEAD)" $(MAKE) release VERSION="$${TAG}"
+	SOURCE_DATE_EPOCH="$$(git show -s --format=%ct HEAD)" bash scripts/create-local-release.sh
+
+release-check: validate-tag ## Validate a planned release without creating a tag or publishing
+	@test "$${TAG}" != "$$(git describe --exact-match --tags HEAD 2>/dev/null || true)" || { echo "ERROR: TAG already points at HEAD; pre-tag check requires a planned, uncreated tag" >&2; exit 1; }
 	@test -z "$$(git status --porcelain)" || { echo "ERROR: release-check requires a clean worktree" >&2; git status --short >&2; exit 1; }
-	case "$(TAG)" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "ERROR: TAG must match vMAJOR.MINOR.PATCH" >&2; exit 1;; esac
+	case "$${TAG}" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "ERROR: TAG must match vMAJOR.MINOR.PATCH" >&2; exit 1;; esac
 	@test -f build/SHA256SUMS || { echo "ERROR: build/SHA256SUMS is missing; run make manifest" >&2; exit 1; }
 	for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64; do test -x "build/$$asset" || { echo "ERROR: missing or non-executable build/$$asset" >&2; exit 1; }; done
-	( cd build && sha256sum -c SHA256SUMS )
-	@echo ">> release-check passed for $(TAG)"
+	( cd build && if command -v sha256sum >/dev/null 2>&1; then sha256sum -c SHA256SUMS; elif command -v shasum >/dev/null 2>&1; then shasum -a 256 -c SHA256SUMS; else echo "ERROR: neither sha256sum nor shasum is available; cannot verify SHA-256 checksums" >&2; exit 1; fi )
+	@echo ">> release-check passed for $${TAG}"
 
 # ==============================================================================
 # CI helpers

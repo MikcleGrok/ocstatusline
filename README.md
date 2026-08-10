@@ -396,8 +396,25 @@ make mock-up         # start the fixture-playback OpenCode mock
 make ci-test         # exactly what CI runs
 make release         # gates + all targets + SHA256SUMS
 make release-check TAG=v0.2.5 # pre-tag candidate gate; does not publish
+make release-local TAG=v0.2.5   # exact clean tag: local binaries/source/manifest/notes
 make clean           # drop the cache volumes and ./build
 ```
+
+`make release-local` is the offline release path. It requires `TAG` to point
+exactly at `HEAD` and a clean worktree, runs the same local gates as `make
+release`, then stores the binaries, a deterministic source archive,
+`SHA256SUMS`, `manifest.json`, and `release-notes.md` in
+`dist/local-release/<version>/`. It does not require GitHub, GitLab, `gh`, an
+API token, Docker publication, a registry, or any other external service.
+The manifest's `artifacts` list contains exactly the four binaries; `source` is
+the separate deterministic source archive. `SHA256SUMS` contains exactly those
+four binaries and that source archive, so every distributable file is covered.
+The output directory is intentionally never removed or merged: if
+`dist/local-release/<version>/` already exists, the command fails before
+writing it. Remove that directory explicitly when a replacement is intended;
+unrelated files in an existing output directory are therefore never deleted.
+`make local-release TAG=...` is an alias. Publication targets, if added later,
+must remain separate from this local target.
 
 The version reported by `--version` is stamped at build time from `git describe --tags --always --dirty`; a tree checked out without a build reports `dev`.
 
