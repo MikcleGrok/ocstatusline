@@ -1,26 +1,26 @@
 class Ocstatusline < Formula
   desc "Live, customizable status line for OpenCode (single-binary push daemon)"
   homepage "https://github.com/MikcleGrok/ocstatusline"
-  version "0.2.6"
+  version "0.2.8"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-arm64"
-      sha256 "1b6a8a06535b9cad4d22059919ea8af18a80295c26e92e03a9d675b090e3525f"
+      sha256 "464fee7786b56f54e90534fef7dfb80eebea33c8a3dcae8b613fb430e0fe78eb"
     else
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-x64"
-      sha256 "6510c2e5fdbcbe02a208dd99da800f44786d5db7bb9e326f2286b037c0bc8cfb"
+      sha256 "affa560e53bf46ef64e8a09fd4ae55c098d80a1beac0be83f1e7f3f12a30e30b"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-arm64"
-      sha256 "e568368bcacc65cf732fc35d695b688b313f7e46b36d0ed50473aa4b132297f9"
+      sha256 "0b1134be1f5b07e1c8da6b14246449cc19efa1e593ea13a1827a5df5f2256998"
     else
       url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-x64"
-      sha256 "573f1a9c62b2161344eea8569446041b8be337feec98381ac0f903fbe073f025"
+      sha256 "a40efb4d613ea9e4ae5f9ce2583c1ee92db470f699182fae134fe9bd47d4fb5e"
     end
   end
 
