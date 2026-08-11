@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDaemonProjectStatusCache, registerDaemonShutdown } from '../src/daemon.js';
+import { subscribeEvents } from '../src/data/server.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -33,6 +34,14 @@ describe('daemon project status cache', () => {
     expect(cache.get('/project-b').productionVersion).toBe('2.0.0');
   });
 
+  it('keeps only the current cwd read pending when old reads never settle', () => {
+    const cache = createDaemonProjectStatusCache(() => new Promise(() => {}));
+
+    for (let i = 0; i < 100; i++) cache.refresh(`/project-${i}`);
+
+    expect(cache.pendingCount()).toBe(1);
+  });
+
   it('shuts down once when SIGINT and SIGTERM are both delivered', () => {
     vi.useFakeTimers();
     const stop = vi.fn();
@@ -58,5 +67,37 @@ describe('daemon project status cache', () => {
     expect(exit).toHaveBeenCalledOnce();
     expect(process.listeners('SIGINT')).toEqual(sigintBefore);
     expect(process.listeners('SIGTERM')).toEqual(sigtermBefore);
+  });
+
+  it('does not accumulate timers or signal listeners across repeated shutdowns', () => {
+    vi.useFakeTimers();
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const sigintBefore = process.listeners('SIGINT');
+    const sigtermBefore = process.listeners('SIGTERM');
+
+    for (let i = 0; i < 50; i++) {
+      const timers = [setInterval(() => {}, 60_000), setInterval(() => {}, 60_000)];
+      registerDaemonShutdown({ timers, stop: vi.fn(), close: vi.fn(), timeoutMs: 60_000 });
+      process.emit('SIGTERM');
+      expect(process.listeners('SIGINT')).toEqual(sigintBefore);
+      expect(process.listeners('SIGTERM')).toEqual(sigtermBefore);
+      expect(vi.getTimerCount()).toBe(0);
+    }
+
+    expect(exit).toHaveBeenCalledTimes(50);
+  });
+});
+
+describe('daemon event subscription', () => {
+  it('closes the async iterator exactly once when stopped repeatedly', async () => {
+    const returnSpy = vi.fn(async () => ({ done: true, value: undefined }));
+    const client = { event: { subscribe: vi.fn(async () => ({ stream: { [Symbol.asyncIterator]: () => ({ next: () => new Promise(() => {}), return: returnSpy }) } })) } };
+
+    const stop = await subscribeEvents(client as never, vi.fn());
+    stop();
+    stop();
+    await Promise.resolve();
+
+    expect(returnSpy).toHaveBeenCalledOnce();
   });
 });
