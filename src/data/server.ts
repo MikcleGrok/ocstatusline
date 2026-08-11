@@ -35,9 +35,10 @@ export async function subscribeEvents(
   let stopped = false;
   // ServerSentEventsResult: { stream: AsyncGenerator<TData[keyof TData]> }
   const stream = result.stream ?? result;
+  const iterator = stream[Symbol.asyncIterator]();
   (async () => {
     try {
-      for await (const ev of stream) {
+      for await (const ev of iterator) {
         if (stopped) break;
         onEvent(ev);
       }
@@ -45,5 +46,9 @@ export async function subscribeEvents(
       /* stream ended/aborted */
     }
   })();
-  return () => { stopped = true; };
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    void iterator.return?.();
+  };
 }

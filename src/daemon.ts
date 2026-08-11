@@ -24,6 +24,9 @@ export function createDaemonProjectStatusCache(read: (cwd: string | null) => Pro
   const refresh = (cwd: string | null): Promise<void> => {
     const nextKey = cwd ? resolve(cwd) : null;
     if (nextKey !== currentKey) {
+      for (const key of pendingReads.keys()) {
+        if (key !== nextKey) pendingReads.delete(key);
+      }
       currentKey = nextKey;
       currentStatus = { productionVersion: null, root: null };
     }
@@ -40,7 +43,7 @@ export function createDaemonProjectStatusCache(read: (cwd: string | null) => Pro
     pendingReads.set(requestedKey, trackedRead);
     return trackedRead;
   };
-  return { get, refresh };
+  return { get, refresh, pendingCount: () => pendingReads.size };
 }
 
 function paint(state: OpencodeState, settings: ReturnType<typeof loadSettings>, getLimit: ReturnType<typeof loadLimitLookup>, openrouterWeekly: OpenRouterWeeklyContext, productionVersion: string | null) {
