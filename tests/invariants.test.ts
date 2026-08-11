@@ -6,8 +6,6 @@ const ROOT = 'src';
 const makefile = readFileSync('Makefile', 'utf-8');
 const compose = readFileSync('docker-compose.yaml', 'utf-8');
 const ciCompose = readFileSync('docker-compose.ci.override.yaml', 'utf-8');
-const ciWorkflow = readFileSync('.github/workflows/ci.yml', 'utf-8');
-const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf-8');
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -137,18 +135,22 @@ describe('install invariants', () => {
     expect(volumeBlock).toContain('name: ocstatusline-opencode-node-modules-${CI_JOB_ID}');
   });
 
-  it('keeps CI and release workflows on the CI compose selection', () => {
+  it('keeps CI on the CI compose selection and release local-only', () => {
     expect(makefile).toMatch(/ifeq \(\$\(CI\),true\)[\s\S]*?DC := docker compose -f docker-compose\.yaml -f docker-compose\.ci\.override\.yaml/);
-    expect(ciWorkflow).toMatch(/^\s*run: make test-unit\s*$/m);
-    const releaseJob = topLevelBlock(releaseWorkflow, 'release', 2).join('\n');
-    expect(workflowEnv(releaseJob).join('\n')).toMatch(/^\s+CI:\s*true\s*$/m);
-    expect(releaseJob).toMatch(/^\s+- name: Build every target, run the gates, write the manifest\s*$[\s\S]*?^\s+run: make release\s*$/m);
+    const releaseRecipe = makeRecipe(makefile, 'release');
+    expect(releaseRecipe).toEqual(expect.arrayContaining([
+      '$(MAKE) test-unit',
+      '$(MAKE) test-functional',
+      '$(MAKE) build-all',
+      '$(MAKE) manifest',
+    ]));
+    expect(releaseRecipe.join('\n')).not.toMatch(/github|workflow|publish|upload/i);
   });
 
   it('runs the native TUI acceptance gate from the .opencode module cwd before smoke and artifacts', () => {
     const acceptanceRecipe = makeRecipe(makefile, 'acceptance-tui');
     expect(acceptanceRecipe.some((line) => line.includes('timeout --foreground --kill-after='))).toBe(true);
-    expect(makefile).toContain('$(DC) run --rm --no-deps --workdir /src/.opencode test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts');
+    expect(makefile).toContain('$(DC) run --rm --no-deps --workdir /src/.opencode -v "$(GIT_COMMON_DIR):/git:ro" -e GIT_DIR="$(ACCEPTANCE_GIT_DIR)" -e GIT_WORK_TREE=/src test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts');
     expect(makefile).toContain('OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline');
     expect(makefile).toMatch(/ci-test:[^\n]*\bacceptance-tui\b[^\n]*\bsmoke\b/);
     const releaseRecipe = makeRecipe(makefile, 'release');
