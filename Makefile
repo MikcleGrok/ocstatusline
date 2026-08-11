@@ -50,6 +50,11 @@ HOST_TARGET := bun-linux-x64
   endif
 endif
 
+GIT_COMMON_DIR := $(abspath $(shell git rev-parse --git-common-dir))
+GIT_DIR := $(abspath $(shell git rev-parse --git-dir))
+GIT_DIR_REL := $(patsubst $(GIT_COMMON_DIR)/%,%,$(GIT_DIR))
+ACCEPTANCE_GIT_DIR := /git$(if $(filter $(GIT_COMMON_DIR),$(GIT_DIR)),,$(addprefix /,$(GIT_DIR_REL)))
+
 DOCKER_PLATFORM := $(strip $(DOCKER_DEFAULT_PLATFORM))
 ifeq ($(strip $(DOCKER_PLATFORM)),)
 DOCKER_PLATFORM := linux/$(shell docker version --format '{{.Server.Arch}}')
@@ -138,7 +143,7 @@ test-watch: install ## Run the vitest suite in watch mode inside the toolchain i
 	$(DC) run --rm --no-deps test-runner $(VITEST)
 
 acceptance-tui: install ## Run the production OpenTUI plugin through the native test renderer
-	$(DC) run --rm --no-deps --workdir /src/.opencode test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts || { status=$$?; if [ $$status -eq 124 ]; then echo "ERROR: OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline and was terminated" >&2; fi; exit $$status; }
+	$(DC) run --rm --no-deps --workdir /src/.opencode -v "$(GIT_COMMON_DIR):/git:ro" -e GIT_DIR="$(ACCEPTANCE_GIT_DIR)" -e GIT_WORK_TREE=/src test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts || { status=$$?; if [ $$status -eq 124 ]; then echo "ERROR: OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline and was terminated" >&2; fi; exit $$status; }
 
 # ==============================================================================
 # Build (single self-contained binary per target)
