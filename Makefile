@@ -187,8 +187,8 @@ probe-targets: image ## Probe which bun --compile targets this pinned Bun actual
 manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
 	$(DC) run --rm --no-deps builder bash -lc 'cd /out && sha256sum ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64 > SHA256SUMS && cat SHA256SUMS'
 
-check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
-	bash scripts/check-homebrew-formula.sh "$${TAG:-}"
+check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum against build/SHA256SUMS
+	scripts/verify-distribution.sh
 
 check-musl: build-linux ## Answer "are -musl targets needed": run the glibc binary on Alpine
 	docker run --rm -v "$(CURDIR)/build:/out:ro" alpine:3.20 /out/$(LINUX_BIN) --version
