@@ -32,6 +32,15 @@ export interface RenderContext {
   openrouterWeekly: OpenRouterWeeklyContext;
   productionVersion?: string | null;
 }
+// Shared between src/tui/openrouter.ts (direct secretd-socket fetch, used by
+// the signed binary itself) and src/tui/openrouter-subprocess.ts (subprocess
+// fetch via that binary, used by the OpenCode TUI plugin) so neither has to
+// import the other just for this type -- the plugin's dependency closure
+// must not pull in openrouter.ts, which it no longer uses at runtime.
+export interface OpenRouterBalance {
+  source: 'account' | 'key-limit';
+  balanceUsd: number;
+}
 export interface OpenRouterWeeklyContext {
   source: 'account' | 'key-limit' | null;
   balanceUsd: number | null;

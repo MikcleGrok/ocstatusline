@@ -209,14 +209,28 @@ plugin выполняется через `.opencode/tui.json` с ключом `p
 Этот API не является стабильным или официальным status-line API OpenCode. Custom
 footer имеет формат `$47.78 · sender · DEV-15309`: `sender` — basename корня
 Git-репозитория, branch выводится целиком. Баланс `ocstatusline` больше не
-запрашивает у OpenRouter напрямую и не читает никакие ключи сам: он подключается
-к локальному демону [`secretd`](https://github.com/MikcleGrok/secretd) по Unix
-socket `~/.secretd/sock` и вызывает его модуль `openrouter/credits` (общий
-account balance по management-ключу, `total_credits - total_usage`). Если
-`secretd` отвечает `ok: true` без данных (секрет ещё не зарегистрирован),
-`ocstatusline` вызывает модуль `openrouter/key-limit` (per-key remaining limit
-ключа, выданного OpenCode) как второй источник. Оба модуля и приоритет между
-ними задаёт сам `secretd`; `ocstatusline` только читает результат.
+запрашивает у OpenRouter напрямую и не читает никакие ключи сам: в конечном
+счёте он всегда идёт к локальному демону
+[`secretd`](https://github.com/MikcleGrok/secretd) по Unix socket
+`~/.secretd/sock` и вызывает его модуль `openrouter/credits` (общий account
+balance по management-ключу, `total_credits - total_usage`). Если `secretd`
+отвечает `ok: true` без данных (секрет ещё не зарегистрирован), `ocstatusline`
+вызывает модуль `openrouter/key-limit` (per-key remaining limit ключа,
+выданного OpenCode) как второй источник. Оба модуля и приоритет между ними
+задаёт сам `secretd`; `ocstatusline` только читает результат.
+
+Путь к сокету зависит от того, кто именно выполняет запрос, потому что
+`secretd` проверяет code signature процесса, реально держащего соединение, а
+не то, что бинарник заявляет о себе. Standalone daemon (`ocstatusline start`)
+и CLI сами являются подписанным бинарником и подключаются к сокету напрямую
+(`src/tui/openrouter.ts`). TUI plugin выполняется *внутри* процесса
+`opencode` — его сигнатура никогда не совпадёт с тем, что `secretd`
+зарегистрировал для `ocstatusline`, сколько бы plugin ни пытался
+аутентифицироваться сам. Поэтому plugin вообще не открывает сокет: он
+делает subprocess-вызов `ocstatusline openrouter-status` (см.
+`src/tui/openrouter-subprocess.ts` и `src/tui/openrouter-status.ts`) и читает
+результат из stdout как JSON — ровно тот же паттерн, что `secretctl` даёт
+другим неподписанным инструментам для доступа к `secretd`.
 Строка серого цвета получает один левый отступ через OpenTUI `paddingLeft: 1`.
 Штатный footer OpenCode сохраняется и продолжает показывать model, context,
 session cost, timer и прочие widgets; custom footer их не дублирует.
@@ -228,11 +242,11 @@ npm install --prefix .opencode --no-audit --no-fund
 opencode
 ```
 
-Если `secretd` не установлен или не запущен, подключение к сокету не
-удаётся, и это ожидаемое, не ошибочное состояние: баланс просто не
-отображается (footer выводится без суммы), пока демон не поднят. Установка и
-настройка `secretd` — вне области этого README, см.
-[репозиторий `secretd`](https://github.com/MikcleGrok/secretd).
+Если `secretd` не установлен, не запущен, или бинарник `ocstatusline`
+недоступен в `PATH` процесса `opencode`, это ожидаемое, не ошибочное
+состояние: баланс просто не отображается (footer выводится без суммы), пока
+обе части не будут на месте. Установка и настройка `secretd` — вне области
+этого README, см. [репозиторий `secretd`](https://github.com/MikcleGrok/secretd).
 последнее успешно полученное значение сохраняется до следующего успешного
 обновления. На home route custom строка может быть нейтральной до завершения
 асинхронного git refresh; вне Git-репозитория она остается пустой. Баланс
@@ -278,8 +292,8 @@ checkout, потому что TUI plugin loader читает исключите�
 задана), так что он грузится в любом проекте на этой машине. Команда:
 
 - копирует `.opencode/tui-plugins/ocstatusline.ts` и весь его dependency
-  closure (`src/tui/footer.ts`, `src/tui/openrouter.ts`, `src/data/git.ts`,
-  `src/data/openrouter-weekly.ts`, `src/types/index.ts`,
+  closure (`src/tui/footer.ts`, `src/tui/openrouter-subprocess.ts`,
+  `src/data/git.ts`, `src/data/openrouter-weekly.ts`, `src/types/index.ts`,
   `src/utils/config.ts`) в глобальный config dir, переписывая
   `../../src/...` imports plugin entry на `../src/...` — глубина вложенности
   меняется, потому что глобальный config dir играет роль `.opencode/`, а не

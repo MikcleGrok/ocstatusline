@@ -2,8 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { OpenRouterBalance } from '../tui/openrouter.js';
-import type { OpenRouterWeeklyContext } from '../types/index.js';
+import type { OpenRouterBalance, OpenRouterWeeklyContext } from '../types/index.js';
 
 export interface WeeklyAnchor { version: 2; windowStartMs: number; usageAtStart: number; lastUsage: number; }
 interface LegacyWeeklyAnchor { windowStartMs: number; accountBalanceAtStartUsd: number; pendingUsageRebase?: boolean; }

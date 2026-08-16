@@ -50,6 +50,11 @@ async function main() {
     await runStdinRender();
     return;
   }
+  if (cmd.mode === 'openrouter-status') {
+    const { runOpenRouterStatus } = await import('./tui/openrouter-status.js');
+    await runOpenRouterStatus({ timeoutMs: cmd.timeoutMs });
+    return;
+  }
   const { mountTui } = await import('./tui/run.js');
   await mountTui();
 }
@@ -67,6 +72,13 @@ Commands:
                    config (~/.config/opencode) so it loads in every project. Works
                    both from a checked-out copy of this repo (files read off disk)
                    and from the standalone binary (plugin source embedded in it).
+  openrouter-status [--timeout MS]
+                   One-shot fetch of the OpenRouter balance and usage over the
+                   local secretd socket; prints one JSON line and exits. Lets a
+                   caller that cannot itself carry a trustworthy codesign
+                   identity (the OpenCode TUI plugin, embedded in the opencode
+                   process) delegate the secretd call to this signed binary via
+                   subprocess instead of connecting to the socket directly.
   --version, -v    Print the version and exit.
   --help           Print this message and exit.
 
@@ -76,6 +88,7 @@ Examples:
   ocstatusline start --server http://127.0.0.1:4096
   ocstatusline render --stdin < snapshot.json
   ocstatusline install
+  ocstatusline openrouter-status
   ocstatusline --version
   ocstatusline -v
 

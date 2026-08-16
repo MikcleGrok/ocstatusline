@@ -33,6 +33,21 @@ describe('parseCli', () => {
   it('install → install mode', () => {
     expect(parseCli(['install'])).toEqual({ mode: 'install' });
   });
+  it('openrouter-status → openrouter-status mode, no timeout', () => {
+    expect(parseCli(['openrouter-status'])).toEqual({ mode: 'openrouter-status' });
+  });
+  it('openrouter-status --timeout <ms> → openrouter-status mode with timeout', () => {
+    expect(parseCli(['openrouter-status', '--timeout', '500'])).toEqual({ mode: 'openrouter-status', timeoutMs: 500 });
+  });
+  it('rejects openrouter-status with an unrelated extra argument', () => {
+    expect(parseCli(['openrouter-status', 'extra'])).toEqual({ mode: 'error', error: 'openrouter-status accepts only --timeout MS' });
+  });
+  it('rejects openrouter-status --timeout without a value', () => {
+    expect(parseCli(['openrouter-status', '--timeout'])).toEqual({ mode: 'error', error: 'openrouter-status accepts only --timeout MS' });
+  });
+  it('rejects openrouter-status --timeout with trailing extra arguments', () => {
+    expect(parseCli(['openrouter-status', '--timeout', '500', 'extra'])).toEqual({ mode: 'error', error: 'openrouter-status accepts only --timeout MS' });
+  });
   it('--help → help mode', () => {
     expect(parseCli(['--help'])).toEqual({ mode: 'help' });
   });

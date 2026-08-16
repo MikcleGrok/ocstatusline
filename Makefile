@@ -129,11 +129,11 @@ endif
 test: test-unit ## Run the fast unit suite inside the toolchain image
 
 test-unit: install ## Run unit, render and data tests without process/acceptance boundaries
-	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose --exclude='tests/acceptance/**' --exclude='tests/mock/**' --exclude='tests/tui/openrouter.test.ts'
+	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose --exclude='tests/acceptance/**' --exclude='tests/mock/**' --exclude='tests/tui/openrouter.test.ts' --exclude='tests/tui/openrouter-status.test.ts'
 
 test-functional: install ## Run Bun process and transport functional tests
 	$(DC) run --rm --no-deps test-runner bun run tests/acceptance/cli.acceptance.ts
-	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose tests/mock tests/tui/openrouter.test.ts tests/render/stdin.test.ts
+	$(DC) run --rm --no-deps test-runner $(VITEST) run --reporter=verbose tests/mock tests/tui/openrouter.test.ts tests/tui/openrouter-status.test.ts tests/render/stdin.test.ts
 
 test-acceptance: acceptance-tui smoke ## Run native TUI and compiled artifact acceptance
 

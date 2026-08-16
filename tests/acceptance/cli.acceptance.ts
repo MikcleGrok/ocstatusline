@@ -25,7 +25,15 @@ async function main(): Promise<void> {
   const malformedJson = await runCli(['render', '--stdin'], '{bad json');
   assert.equal(malformedJson.exitCode, 1);
   assert.match(malformedJson.stderr, /ocstatusline:/);
-  console.log('CLI acceptance: 5 scenarios passed');
+
+  // No real secretd guaranteed in this environment: openrouter-status must
+  // still exit 0 with a well-formed JSON line, failing closed to nulls --
+  // never erroring just because the daemon is unreachable.
+  const openrouterStatus = await runCli(['openrouter-status', '--timeout', '200']);
+  assert.equal(openrouterStatus.exitCode, 0);
+  const parsed = JSON.parse(openrouterStatus.stdout);
+  assert.ok('balance' in parsed && 'usage' in parsed);
+  console.log('CLI acceptance: 6 scenarios passed');
 }
 
 main().catch((error: unknown) => {

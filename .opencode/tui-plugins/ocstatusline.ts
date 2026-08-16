@@ -5,7 +5,7 @@ import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
 import { formatTuiFooterSegments, formatTuiModelCost, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiFooterSegment, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { readProjectStatus } from '../../src/data/project-status.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
-import { fetchOpenRouterBalanceWithSource, fetchOpenRouterUsage } from '../../src/tui/openrouter.js';
+import { fetchOpenRouterStatusViaBinary } from '../../src/tui/openrouter-subprocess.js';
 import { loadSettings } from '../../src/utils/config.js';
 
 const BALANCE_REFRESH_INTERVAL = 60_000;
@@ -70,10 +70,11 @@ const module: TuiPluginModule = {
       return true;
     };
     const refreshBalance = async () => {
-      const [nextBalance, nextUsage] = await Promise.all([
-        fetchOpenRouterBalanceWithSource(3000, balanceController.signal),
-        fetchOpenRouterUsage(3000, balanceController.signal),
-      ]);
+      // Shells out to the real signed `ocstatusline` binary rather than
+      // connecting to secretd directly: this code runs embedded inside the
+      // `opencode` process, which can never carry ocstatusline's own
+      // codesign identity. See src/tui/openrouter-subprocess.ts.
+      const { balance: nextBalance, usage: nextUsage } = await fetchOpenRouterStatusViaBinary(5000, balanceController.signal);
       if (disposed) return;
       openrouterWeekly = updateWeeklyState(nextBalance, nextUsage, weeklyBudgetUsd, Date.now(), openrouterWeekly);
       bump();
