@@ -305,11 +305,11 @@ sync-verify: ## Re-verify the fork after a rebase onto upstream: deps, guards, t
 
 brew-info: ## Print the end-user brew install commands (assumes the tap repo exists)
 	@echo "Tap once:"
-	@echo "  brew tap MikcleGrok/ocstatusline https://github.com/MikcleGrok/homebrew-ocstatusline"
+	@echo "  brew tap MikcleGrok/tools https://github.com/MikcleGrok/tools.git"
 	@echo "Then install (or upgrade):"
-	@echo "  brew install ocstatusline"
-	@echo "Or in one shot (Homebrew auto-creates the tap from homebrew-ocstatusline):"
-	@echo "  brew install MikcleGrok/ocstatusline/ocstatusline"
+	@echo "  brew install MikcleGrok/tools/ocstatusline"
+	@echo "Or install directly from the canonical tap:"
+	@echo "  brew install MikcleGrok/tools/ocstatusline"
 	@echo ""
 	@echo "See docs/homebrew-tap.md for the tap-repo layout and the per-release edit."
 

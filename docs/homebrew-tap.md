@@ -5,26 +5,21 @@ following the same pattern as `uni-chat`'s `Formula/uni-chat.rb`. Because
 Homebrew refuses to install a Formula that is not part of a tap, the Formula
 is reached through a tap.
 
-> **Since this fork's main GitHub repo (`MikcleGrok/ocstatusline`) is public,
-> there is no separate tap repository** — `brew install
-> MikcleGrok/ocstatusline/ocstatusline` taps the main repo implicitly and works
-> out of the box. The "create a `homebrew-ocstatusline` repo" flow that
-> public-private projects need (where the upstream is not under our control)
-> is documented at the bottom for reference only.
+> The canonical tap is `MikcleGrok/tools`, shared by all product formulae.
 
 ---
 
 ## End-user install
 
 ```bash
-brew install MikcleGrok/ocstatusline/ocstatusline
+brew tap MikcleGrok/tools https://github.com/MikcleGrok/tools.git
+brew install MikcleGrok/tools/ocstatusline
 ocstatusline --version   # → v0.1.1 (or whatever just shipped)
 ```
 
 `brew update && brew upgrade` then picks up subsequent releases — Homebrew
 sees the Formula live in the same GitHub repo the release comes from, so
-the implicit tap from `MikcleGrok/ocstatusline` always tracks `main` (or
-`bun-single-binary` for this fork).
+the canonical tap tracks the published formula and release assets.
 
 ---
 
@@ -36,14 +31,13 @@ each edit shows up instantly without a `git push`:
 
 ```bash
 brew uninstall --force ocstatusline 2>/dev/null || true
-brew tap MikcleGrok/ocstatusline "$(pwd)" 2>/dev/null || true
-brew install MikcleGrok/ocstatusline/ocstatusline
+brew tap MikcleGrok/tools "$(pwd)" 2>/dev/null || true
+brew install MikcleGrok/tools/ocstatusline
 ocstatusline --version
 ```
 
-When the next release ships, `brew untap MikcleGrok/ocstatusline && brew
-install MikcleGrok/ocstatusline/ocstatusline` switches back to the
-GitHub-backed tap in one command.
+When the next release ships, retap `MikcleGrok/tools` from its canonical remote
+before installing the published formula.
 
 ---
 
