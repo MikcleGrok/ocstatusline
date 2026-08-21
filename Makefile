@@ -115,6 +115,7 @@ down: env ## Stop the stack, keep the cache volumes
 clean: env ## Stop the stack, drop the cache volumes and the build output
 	$(DC) down --volumes --remove-orphans
 	rm -rf build
+	rm -f -- .*.bun-build
 
 # ==============================================================================
 # Tests
