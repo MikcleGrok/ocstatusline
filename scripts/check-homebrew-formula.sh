@@ -5,9 +5,10 @@ root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 tag="${1:-$(git -C "$root" describe --tags --exact-match 2>/dev/null || true)}"
 [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || { printf 'formula-check blocker: exact release tag required, got %s\n' "$tag" >&2; exit 1; }
 version="${tag#v}"
-formula="$root/Formula/ocstatusline.rb"
+tap_dir="${HOMEBREW_TAP_DIR:-$root/../homebrew-mikclegrok-tools}"
+formula="$tap_dir/Formula/ocstatusline.rb"
 sums="$root/build/SHA256SUMS"
-test -s "$formula" || { printf '%s\n' 'formula-check blocker: formula is missing' >&2; exit 1; }
+test -s "$formula" || { printf 'formula-check blocker: canonical tap formula is missing: %s\n' "$formula" >&2; exit 1; }
 test -s "$sums" || { printf '%s\n' 'formula-check blocker: build/SHA256SUMS is missing' >&2; exit 1; }
 grep -F "version \"$version\"" "$formula" >/dev/null || { printf 'formula-check blocker: stale formula version expected=%s\n' "$version" >&2; exit 1; }
 if command -v sha256sum >/dev/null 2>&1; then

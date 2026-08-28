@@ -23,6 +23,7 @@ done
 if [ -n "$tag" ] && ! $tag_arg_set; then
   safe_args+=(--tag "$tag")
 fi
-root=$(cd -- "$(dirname -- "$0")/.." && pwd)
-guide_tools_root=${GUIDE_TOOLS_ROOT:-$(cd -- "$root/../guide-tools" && pwd)}
-exec "$guide_tools_root/bin/guide-distribution-verify" "${safe_args[@]}" --profile prebuilt --root "$root" --formula "$root/Formula/ocstatusline.rb" --manifest "$root/build/SHA256SUMS" --assets ocstatusline-darwin-arm64,ocstatusline-darwin-x64,ocstatusline-linux-arm64,ocstatusline-linux-x64
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
+guide_tools_root=${GUIDE_TOOLS_ROOT:-$(CDPATH='' cd -- "$root/../guide-tools" && pwd -P)}
+tap_dir=${HOMEBREW_TAP_DIR:-$root/../homebrew-mikclegrok-tools}
+exec "$guide_tools_root/bin/guide-distribution-verify" "${safe_args[@]}" --profile prebuilt --root "$root" --formula "$tap_dir/Formula/ocstatusline.rb" --source-url https://github.com/MikcleGrok/ocstatusline --manifest "$root/build/SHA256SUMS" --assets ocstatusline-darwin-arm64,ocstatusline-darwin-x64,ocstatusline-linux-arm64,ocstatusline-linux-x64

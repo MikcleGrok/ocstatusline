@@ -58,11 +58,11 @@ It reuses ~70% of ccstatusline's concepts (widget engine, Powerline, colors, fle
 ### Homebrew (macOS or Linux)
 
 ```bash
-brew tap MikcleGrok/tools https://github.com/MikcleGrok/tools.git
-brew install MikcleGrok/tools/ocstatusline
+brew tap mikclegrok/tools https://github.com/MikcleGrok/tools.git
+brew install mikclegrok/tools/ocstatusline
 ```
 
-The canonical `MikcleGrok/tools` tap installs the matching prebuilt binary.
+The canonical `mikclegrok/tools` tap installs the matching prebuilt binary.
 `brew update && brew upgrade` picks up new releases. See
 [docs/homebrew-tap.md](./docs/homebrew-tap.md) for the formula layout and
 release update flow.

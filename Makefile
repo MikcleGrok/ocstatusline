@@ -189,7 +189,7 @@ manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
 	$(DC) run --rm --no-deps builder bash -lc 'cd /out && sha256sum ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64 > SHA256SUMS && cat SHA256SUMS'
 
 check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
-	bash scripts/check-homebrew-formula.sh "$${TAG:-}"
+	HOMEBREW_TAP_DIR="$${HOMEBREW_TAP_DIR:-$(CURDIR)/../homebrew-mikclegrok-tools}" bash scripts/check-homebrew-formula.sh "$${TAG:-}"
 
 check-musl: build-linux ## Answer "are -musl targets needed": run the glibc binary on Alpine
 	docker run --rm -v "$(CURDIR)/build:/out:ro" alpine:3.20 /out/$(LINUX_BIN) --version
@@ -306,13 +306,12 @@ sync-verify: ## Re-verify the fork after a rebase onto upstream: deps, guards, t
 
 brew-info: ## Print the end-user brew install commands (assumes the tap repo exists)
 	@echo "Tap once:"
-	@echo "  brew tap MikcleGrok/tools https://github.com/MikcleGrok/tools.git"
+	@echo "  brew tap mikclegrok/tools https://github.com/MikcleGrok/tools.git"
 	@echo "Then install (or upgrade):"
-	@echo "  brew install MikcleGrok/tools/ocstatusline"
-	@echo "Or install directly from the canonical tap:"
-	@echo "  brew install MikcleGrok/tools/ocstatusline"
+	@echo "  brew install mikclegrok/tools/ocstatusline"
 	@echo ""
-	@echo "See docs/homebrew-tap.md for the tap-repo layout and the per-release edit."
+	@echo "Formula source: canonical tap repo Formula/ocstatusline.rb"
+	@echo "See docs/homebrew-tap.md for the release and tap-update flow."
 
-brew-audit: ## Run `brew audit --strict --new` against Formula/ocstatusline.rb (requires brew)
-	brew audit --strict --new Formula/ocstatusline.rb
+brew-audit: ## Run `brew audit --strict --new` against the canonical fully-qualified formula (requires the tap)
+	brew audit --strict --new mikclegrok/tools/ocstatusline
