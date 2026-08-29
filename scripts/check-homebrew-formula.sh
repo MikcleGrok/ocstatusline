@@ -27,7 +27,7 @@ for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linu
   built="$(checksum "$build_asset")"
   test "${built,,}" = "${expected,,}" || { printf 'formula-check blocker: manifest does not match build asset=%s expected=%s actual=%s\n' "$asset" "$expected" "$built" >&2; exit 1; }
   formula_hash="$(awk -v name="$asset" '
-    /^[[:space:]]*url[[:space:]]+"/ && index($0, "/releases/download/v#{version}/" name "\"") {
+    /^[[:space:]]*url[[:space:]]+"/ && index($0, "/releases/download/" name "\"") {
       if (getline > 0) {
         hash = $0
         sub(/^.*sha256[[:space:]]+"/, "", hash)
