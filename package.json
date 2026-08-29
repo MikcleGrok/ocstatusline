@@ -1,6 +1,6 @@
 {
   "name": "ocstatusline-bun",
-  "version": "0.1.0",
+  "version": "0.2.13",
   "description": "Highly customizable live status line for OpenCode, built as a single self-contained binary (fork of amirlehmam/ocstatusline)",
   "type": "module",
   "bin": {
