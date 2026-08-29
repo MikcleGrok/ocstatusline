@@ -3,8 +3,8 @@ set -euo pipefail
 
 TAG="${TAG:-}"
 VERSION="${VERSION:-}"
-[[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "ERROR: invalid release tag" >&2; exit 1; }
-[[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo "ERROR: invalid release version" >&2; exit 1; }
+[[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]] || { echo "ERROR: invalid release tag" >&2; exit 1; }
+[[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]] || { echo "ERROR: invalid release version" >&2; exit 1; }
 OUT_DIR="dist/local-release/${VERSION}"
 COMMIT="$(git rev-parse HEAD)"
 BUILT_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"

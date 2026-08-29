@@ -153,8 +153,8 @@ acceptance-tui: install ## Run the production OpenTUI plugin through the native 
 EXTRA_FLAGS ?= --minify
 
 validate-tag:
-	@test -n "$${TAG:-}" || { echo "ERROR: TAG is required and must be a safe SemVer vMAJOR.MINOR.PATCH" >&2; exit 2; }
-	@[[ "$${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$$ ]] || { echo "ERROR: TAG must be a safe SemVer vMAJOR.MINOR.PATCH" >&2; exit 1; }
+	@test -n "$${TAG:-}" || { echo "ERROR: TAG is required and must be a safe SemVer vMAJOR.MINOR.PATCH[-PRERELEASE]" >&2; exit 2; }
+	@[[ "$${TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$$ ]] || { echo "ERROR: TAG must be a safe SemVer vMAJOR.MINOR.PATCH[-PRERELEASE]" >&2; exit 1; }
 
 validate-version:
 	@[[ "$${VERSION}" =~ ^[A-Za-z0-9._+-]+$$ ]] || { echo "ERROR: VERSION contains unsafe characters" >&2; exit 1; }
