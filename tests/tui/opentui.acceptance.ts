@@ -3,7 +3,7 @@
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { createServer, type Server } from 'node:net';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
 type Slot = () => unknown;
@@ -100,6 +100,7 @@ async function main(): Promise<void> {
   assert.ok(home, 'acceptance HOME was not initialized');
   const socketPath = join(home, '.secretd', 'sock');
   const originalHome = process.env.HOME;
+  const originalBinary = process.env.OCSTATUSLINE_BINARY;
   let server: Server | undefined;
   let disposePlugin: (() => void) | undefined;
   let renderer: { destroy: () => void } | undefined;
@@ -107,8 +108,12 @@ async function main(): Promise<void> {
   try {
     await mkdir(join(home, '.secretd'), { recursive: true });
     await mkdir(join(home, '.config', 'ocstatusline'), { recursive: true });
-    await writeFile(join(home, '.config', 'ocstatusline', 'settings.json'), JSON.stringify({ openrouter: { weeklyBudgetUsd: 25 } }));
+    await writeFile(join(home, '.config', 'ocstatusline', 'settings.json'), JSON.stringify({ openrouter: { enabled: true, weeklyBudgetUsd: 25 } }));
+    const binaryPath = join(home, 'ocstatusline-fixture');
+    await writeFile(binaryPath, '#!/bin/sh\ntest "$1" = openrouter-status\nprintf \'{"balance":{"source":"account","balanceUsd":10},"usage":0}\\n\'\n');
+    await chmod(binaryPath, 0o755);
     process.env.HOME = home;
+    process.env.OCSTATUSLINE_BINARY = binaryPath;
     server = await listenForCredits(socketPath);
     const plugin = (await import('../../.opencode/tui-plugins/ocstatusline.js')).default as { tui: (api: unknown) => Promise<void> };
     // @ts-expect-error OpenTUI's Bun entrypoint is executable test infrastructure without declarations.
@@ -162,6 +167,8 @@ async function main(): Promise<void> {
     if (server) await new Promise<void>((resolve) => server!.close(() => resolve()));
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
+    if (originalBinary === undefined) delete process.env.OCSTATUSLINE_BINARY;
+    else process.env.OCSTATUSLINE_BINARY = originalBinary;
     await rm(home, { recursive: true, force: true });
   }
 }

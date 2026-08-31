@@ -30,7 +30,7 @@ export function parseOpenRouterStatus(stdout: string): OpenRouterStatus {
   }
 }
 
-export async function fetchOpenRouterStatusViaBinary(timeoutMs = 5000, signal?: AbortSignal, binaryCandidates = ['ocstatusline', ...FALLBACK_BINARY_PATHS]): Promise<OpenRouterStatus> {
+export async function fetchOpenRouterStatusViaBinary(timeoutMs = 5000, signal?: AbortSignal, binaryCandidates = [process.env.OCSTATUSLINE_BINARY || 'ocstatusline', ...FALLBACK_BINARY_PATHS]): Promise<OpenRouterStatus> {
   if (signal?.aborted) return EMPTY_STATUS;
   for (const candidate of binaryCandidates) {
     try {

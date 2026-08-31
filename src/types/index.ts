@@ -77,7 +77,7 @@ export interface Settings {
   refreshInterval: number; // ms
   colorLevel: ColorLevel;
   powerline: PowerlineConfig;
-  openrouter: { enabled: boolean; weeklyBudgetUsd: number };
+  openrouter: { enabled?: boolean; weeklyBudgetUsd: number };
   severityColors?: SeverityColors;
 }
 export function emptyState(): OpencodeState {
