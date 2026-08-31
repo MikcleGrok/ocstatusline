@@ -42,7 +42,6 @@ const module: TuiPluginModule = {
     const [revision, refresh] = createSignal(0);
     const [currentSnapshot, setCurrentSnapshot] = createSignal<TuiRouteSnapshot>(tuiRouteSnapshot(api.route.current, api.state));
     const settings = loadSettings();
-    const openrouterEnabled = settings.openrouter.enabled;
     const weeklyBudgetUsd = settings.openrouter.weeklyBudgetUsd;
     let openrouterWeekly = updateWeeklyState(null, weeklyBudgetUsd, Date.now());
     let lastGit = EMPTY_GIT;
@@ -71,6 +70,10 @@ const module: TuiPluginModule = {
       return true;
     };
     const refreshBalance = async () => {
+      // Shells out to the real signed `ocstatusline` binary rather than
+      // connecting to secretd directly: this code runs embedded inside the
+      // `opencode` process, which can never carry ocstatusline's own
+      // codesign identity. See src/tui/openrouter-subprocess.ts.
       const { balance: nextBalance, usage: nextUsage } = await fetchOpenRouterStatusViaBinary(5000, balanceController.signal);
       if (disposed) return;
       openrouterWeekly = updateWeeklyState(nextBalance, nextUsage, weeklyBudgetUsd, Date.now(), openrouterWeekly);
@@ -118,16 +121,16 @@ const module: TuiPluginModule = {
       api.event.on('session.idle', bump),
       api.event.on('session.error', bump),
     ];
-    const timer = openrouterEnabled ? setInterval(refreshBalance, BALANCE_REFRESH_INTERVAL) : null;
+    const timer = setInterval(refreshBalance, BALANCE_REFRESH_INTERVAL);
     const gitTimer = setInterval(() => void refreshGit(currentSnapshot()), GIT_REFRESH_INTERVAL);
     const statusTimer = setInterval(() => void refreshStatus(currentSnapshot()), STATUS_REFRESH_INTERVAL);
     const routeTimer = setInterval(checkRoute, ROUTE_POLL_INTERVAL);
-    if (openrouterEnabled) void refreshBalance();
+    void refreshBalance();
     void refreshGit(currentSnapshot());
     void refreshStatus(currentSnapshot());
     api.lifecycle.onDispose(() => {
       disposed = true;
-      if (timer) clearInterval(timer);
+      clearInterval(timer);
       clearInterval(gitTimer);
       clearInterval(statusTimer);
       clearInterval(routeTimer);

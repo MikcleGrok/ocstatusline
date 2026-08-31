@@ -73,8 +73,12 @@ Commands:
                    both from a checked-out copy of this repo (files read off disk)
                    and from the standalone binary (plugin source embedded in it).
   openrouter-status [--timeout MS]
-                   Print one JSON line with OpenRouter balance and usage from
-                   local secretd; fail closed when unavailable.
+                   One-shot fetch of the OpenRouter balance and usage over the
+                   local secretd socket; prints one JSON line and exits. Lets a
+                   caller that cannot itself carry a trustworthy codesign
+                   identity (the OpenCode TUI plugin, embedded in the opencode
+                   process) delegate the secretd call to this signed binary via
+                   subprocess instead of connecting to the socket directly.
   --version, -v    Print the version and exit.
   --help           Print this message and exit.
 
