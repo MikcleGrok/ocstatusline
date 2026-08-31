@@ -5,7 +5,7 @@ import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
 import { formatTuiFooterSegments, formatTuiModelCost, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiFooterSegment, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { readProjectStatus } from '../../src/data/project-status.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
-import { fetchOpenRouterBalanceWithSource, fetchOpenRouterUsage } from '../../src/tui/openrouter.js';
+import { fetchOpenRouterStatusViaBinary } from '../../src/tui/openrouter-subprocess.js';
 import { loadSettings } from '../../src/utils/config.js';
 
 const BALANCE_REFRESH_INTERVAL = 60_000;
@@ -42,6 +42,7 @@ const module: TuiPluginModule = {
     const [revision, refresh] = createSignal(0);
     const [currentSnapshot, setCurrentSnapshot] = createSignal<TuiRouteSnapshot>(tuiRouteSnapshot(api.route.current, api.state));
     const settings = loadSettings();
+    const openrouterEnabled = settings.openrouter.enabled;
     const weeklyBudgetUsd = settings.openrouter.weeklyBudgetUsd;
     let openrouterWeekly = updateWeeklyState(null, weeklyBudgetUsd, Date.now());
     let lastGit = EMPTY_GIT;
@@ -70,10 +71,7 @@ const module: TuiPluginModule = {
       return true;
     };
     const refreshBalance = async () => {
-      const [nextBalance, nextUsage] = await Promise.all([
-        fetchOpenRouterBalanceWithSource(3000, balanceController.signal),
-        fetchOpenRouterUsage(3000, balanceController.signal),
-      ]);
+      const { balance: nextBalance, usage: nextUsage } = await fetchOpenRouterStatusViaBinary(5000, balanceController.signal);
       if (disposed) return;
       openrouterWeekly = updateWeeklyState(nextBalance, nextUsage, weeklyBudgetUsd, Date.now(), openrouterWeekly);
       bump();
@@ -120,16 +118,16 @@ const module: TuiPluginModule = {
       api.event.on('session.idle', bump),
       api.event.on('session.error', bump),
     ];
-    const timer = setInterval(refreshBalance, BALANCE_REFRESH_INTERVAL);
+    const timer = openrouterEnabled ? setInterval(refreshBalance, BALANCE_REFRESH_INTERVAL) : null;
     const gitTimer = setInterval(() => void refreshGit(currentSnapshot()), GIT_REFRESH_INTERVAL);
     const statusTimer = setInterval(() => void refreshStatus(currentSnapshot()), STATUS_REFRESH_INTERVAL);
     const routeTimer = setInterval(checkRoute, ROUTE_POLL_INTERVAL);
-    void refreshBalance();
+    if (openrouterEnabled) void refreshBalance();
     void refreshGit(currentSnapshot());
     void refreshStatus(currentSnapshot());
     api.lifecycle.onDispose(() => {
       disposed = true;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
       clearInterval(gitTimer);
       clearInterval(statusTimer);
       clearInterval(routeTimer);

@@ -50,7 +50,7 @@ case "$out" in
 esac
 
 echo ">> the plugin closure must have been written from the embedded copy"
-for f in tui-plugins/ocstatusline.ts src/tui/footer.ts src/tui/openrouter.ts src/data/git.ts src/data/openrouter-weekly.ts src/types/index.ts src/utils/config.ts; do
+for f in tui-plugins/ocstatusline.ts src/tui/footer.ts src/tui/openrouter-subprocess.ts src/data/git.ts src/data/openrouter-weekly.ts src/types/index.ts src/utils/config.ts; do
     if [ ! -s "${CFG}/${f}" ]; then
         echo "FAIL: ${CFG}/${f} is missing or empty"
         exit 1

@@ -1,6 +1,9 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
+import type { OpenRouterBalance } from '../types/index.js';
+
+export type { OpenRouterBalance };
 
 // One connection, one request, one response: the secretd consumer<->core wire
 // protocol (see secretd's internal/protocol/protocol.go). Each line is a
@@ -11,17 +14,12 @@ const USAGE_MODULE = 'openrouter/usage';
 const KEY_LIMIT_MODULE = 'openrouter/key-limit';
 
 export function secretdSocketPath(): string {
-  return join(homedir(), '.secretd', 'sock');
+  return process.env.OCSTATUSLINE_SECRETD_SOCKET || join(homedir(), '.secretd', 'sock');
 }
 
 interface SecretdCallResult {
   ok: boolean;
   result: unknown;
-}
-
-export interface OpenRouterBalance {
-  source: 'account' | 'key-limit';
-  balanceUsd: number;
 }
 
 export async function fetchOpenRouterUsage(timeoutMs: number = DEFAULT_TIMEOUT_MS, signal?: AbortSignal, socketPath: string = secretdSocketPath()): Promise<number | null> {

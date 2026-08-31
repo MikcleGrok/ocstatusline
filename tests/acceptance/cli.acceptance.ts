@@ -25,7 +25,15 @@ async function main(): Promise<void> {
   const malformedJson = await runCli(['render', '--stdin'], '{bad json');
   assert.equal(malformedJson.exitCode, 1);
   assert.match(malformedJson.stderr, /ocstatusline:/);
-  console.log('CLI acceptance: 5 scenarios passed');
+  const openrouterStatus = await runCli(['openrouter-status', '--timeout', '200']);
+  assert.equal(openrouterStatus.exitCode, 0);
+  assert.equal(openrouterStatus.stderr, '');
+  assert.deepEqual(JSON.parse(openrouterStatus.stdout), { balance: null, usage: null });
+
+  const malformedOpenrouterStatus = await runCli(['openrouter-status', '--timeout']);
+  assert.equal(malformedOpenrouterStatus.exitCode, 1);
+  assert.match(malformedOpenrouterStatus.stderr, /openrouter-status accepts only --timeout MS/);
+  console.log('CLI acceptance: 7 scenarios passed');
 }
 
 main().catch((error: unknown) => {

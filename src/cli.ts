@@ -1,4 +1,4 @@
-export type CliMode = 'tui' | 'daemon' | 'stdin-render' | 'version' | 'help' | 'error' | 'install';
+export type CliMode = 'tui' | 'daemon' | 'stdin-render' | 'version' | 'help' | 'error' | 'install' | 'openrouter-status';
 
 export interface CliCommand {
   mode: CliMode;
@@ -16,6 +16,12 @@ export function parseCli(argv: string[]): CliCommand {
   if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') return { mode: 'help' };
   if (argv.includes('--version') || (argv.length === 1 && argv[0] === '-v') || argv[0] === 'version') return { mode: 'version' };
   if (argv[0] === 'install') return { mode: 'install' };
+  if (argv[0] === 'openrouter-status') {
+    if (argv.length === 1) return { mode: 'openrouter-status' };
+    const timeoutIndex = argv.indexOf('--timeout');
+    if (argv.length === 3 && timeoutIndex === 1 && /^\d+$/.test(argv[2]!)) return { mode: 'openrouter-status', timeoutMs: parseInt(argv[2]!, 10) };
+    return { mode: 'error', error: 'openrouter-status accepts only --timeout MS' };
+  }
   if (argv[0] === 'start') {
     const i = argv.indexOf('--server');
     const serverUrl = i >= 0 && i < argv.length - 1 ? argv[i + 1] : undefined;

@@ -32,6 +32,10 @@ export interface RenderContext {
   openrouterWeekly: OpenRouterWeeklyContext;
   productionVersion?: string | null;
 }
+export interface OpenRouterBalance {
+  source: 'account' | 'key-limit';
+  balanceUsd: number;
+}
 export interface OpenRouterWeeklyContext {
   source: 'account' | 'key-limit' | null;
   balanceUsd: number | null;
@@ -73,7 +77,7 @@ export interface Settings {
   refreshInterval: number; // ms
   colorLevel: ColorLevel;
   powerline: PowerlineConfig;
-  openrouter: { weeklyBudgetUsd: number };
+  openrouter: { enabled: boolean; weeklyBudgetUsd: number };
   severityColors?: SeverityColors;
 }
 export function emptyState(): OpencodeState {

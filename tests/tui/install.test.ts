@@ -60,7 +60,7 @@ describe('runTuiInstall file copy', () => {
     const expectedRelativePaths = [
       'tui-plugins/ocstatusline.ts',
       'src/tui/footer.ts',
-      'src/tui/openrouter.ts',
+      'src/tui/openrouter-subprocess.ts',
       'src/data/git.ts',
       'src/data/openrouter-weekly.ts',
       'src/data/project-status.ts',
@@ -82,13 +82,13 @@ describe('runTuiInstall file copy', () => {
     expect(pluginSource).not.toContain("'../../src/");
     expect(pluginSource).toContain("from '../src/tui/footer.js'");
     expect(pluginSource).toContain("from '../src/data/openrouter-weekly.js'");
-    expect(pluginSource).toContain("from '../src/tui/openrouter.js'");
+    expect(pluginSource).toContain("from '../src/tui/openrouter-subprocess.js'");
     expect(pluginSource).toContain("from '../src/utils/config.js'");
 
     // The rewritten specifiers must actually resolve to real copied files,
     // matching what node's relative-import resolution would do starting
     // from tui-plugins/ocstatusline.ts.
-    for (const relative of ['../src/tui/footer.js', '../src/data/openrouter-weekly.js', '../src/tui/openrouter.js', '../src/utils/config.js']) {
+    for (const relative of ['../src/tui/footer.js', '../src/data/openrouter-weekly.js', '../src/tui/openrouter-subprocess.js', '../src/utils/config.js']) {
       const resolvedTsPath = join(configDir, 'tui-plugins', relative).replace(/\.js$/, '.ts');
       expect(existsSync(resolvedTsPath), `expected ${resolvedTsPath} to exist`).toBe(true);
     }
@@ -335,7 +335,7 @@ describe('resolveConfigDir', () => {
   });
 });
 
-const CLOSURE_RELATIVE_PATHS = ['src/tui/footer.ts', 'src/tui/openrouter.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/data/project-status.ts', 'src/types/index.ts', 'src/utils/config.ts'];
+const CLOSURE_RELATIVE_PATHS = ['src/tui/footer.ts', 'src/tui/openrouter-subprocess.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/data/project-status.ts', 'src/types/index.ts', 'src/utils/config.ts'];
 
 describe('runTuiInstall embedded (standalone-binary) mode', () => {
   it('writes the same file closure as the disk mode, without any repo checkout', async () => {
