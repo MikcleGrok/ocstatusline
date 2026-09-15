@@ -129,6 +129,27 @@ describe('TUI footer', () => {
     expect(formatTuiFooter(47.78, { isRepo: false, root: null, branch: null })).toBe('');
   });
 
+  it('renders the weekly and account balance segments outside a git repository', () => {
+    const weekly = { source: 'account' as const, balanceUsd: 49.46844, budgetUsd: 25, spentUsd: 0, remainingUsd: 25, windowStartMs: 0, windowEndMs: 1 };
+    expect(formatTuiFooterSegments(weekly, { isRepo: false, root: null, branch: null }, 0)).toEqual([
+      { text: '$25.00', color: 75 },
+      { text: '$49', color: 75 },
+    ]);
+  });
+
+  it('keeps the weekly and production segments outside a git repository', () => {
+    expect(formatTuiFooterSegments(null, { isRepo: false, root: null, branch: null }, undefined, '2026.08.04')).toEqual([
+      { text: '?', color: 'gray' },
+      { text: 'prod 2026.08.04', color: 'gray' },
+    ]);
+  });
+
+  it('omits only the repository segment when git information is incomplete', () => {
+    expect(formatTuiFooterSegments(47.78, { isRepo: true, root: '/work/sender', branch: null }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
+    expect(formatTuiFooterSegments(47.78, { isRepo: false, root: '/work/sender', branch: 'main' }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
+    expect(formatTuiFooterSegments(47.78, { isRepo: true, root: null, branch: 'main' }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
+  });
+
   it('parses preloaded git output without side effects', () => {
     expect(parseTuiGitInfo('# branch.head DEV-15309\n# branch.oid abcdef123456\n', '/work/sender\n')).toEqual(git);
   });

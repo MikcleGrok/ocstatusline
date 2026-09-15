@@ -27,6 +27,8 @@ vi.mock('../../src/tui/footer.js', async (importOriginal) => {
 vi.mock('../../src/data/project-status.js', () => ({ readProjectStatus: async () => ({ productionVersion: null }) }));
 
 import plugin, { setTuiJsxForTests } from '../../.opencode/tui-plugins/ocstatusline';
+import { getTuiGitInfo } from '../../src/tui/footer.js';
+import { defaultSettings, loadSettings } from '../../src/utils/config.js';
 
 const runTui = plugin.tui as unknown as (api: unknown) => Promise<void>;
 setTuiJsxForTests(((type: unknown, props: unknown) => ({ type, props })) as never);
@@ -288,6 +290,29 @@ describe('TUI plugin contract', () => {
 
       expect(fixture.footer()).toContain('$8.00');
       expect(fixture.listCalls.length).toBe(settledCalls);
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  it('renders session cost with weekly/account balances but no repository segment outside a git repository', async () => {
+    // Gap: every session-cost test mocked getTuiGitInfo as isRepo:true, and every non-git footer
+    // test exercised formatTuiFooterSegments directly rather than a real sessionCost segment
+    // through the full runTui path — so the git-gate split and the session-cost cache were never
+    // proven to compose correctly together outside a repository.
+    vi.useFakeTimers();
+    vi.mocked(getTuiGitInfo).mockResolvedValueOnce({ isRepo: false, root: null, branch: null });
+    vi.mocked(loadSettings).mockReturnValueOnce({ ...defaultSettings(), openrouter: { enabled: true, weeklyBudgetUsd: 25 } });
+    const fixture = makeSessionCostApi([{ id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } }], () => 5);
+    try {
+      await runTui(fixture.api);
+      await advanceUntil(() => fixture.footer().includes('$5.00'));
+
+      const text = fixture.footer();
+      expect(text).toContain('$5.00');
+      expect(text).toContain('$12.34');
+      expect(text).toContain('$50');
+      expect(text).not.toContain('project · main');
     } finally {
       fixture.dispose();
     }

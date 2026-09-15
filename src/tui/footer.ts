@@ -99,13 +99,12 @@ export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number, colors
 }
 
 export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null, colors: SeverityColors = DEFAULT_SEVERITY_COLORS): TuiFooterSegment[] {
-  if (!git.isRepo || !git.root || !git.branch) return [];
   const value = footerBalanceValue(balance);
   const weeklyText = formatFooterBalance(value);
-  const segments: TuiFooterSegment[] = [
-    { text: weeklyText, color: tuiFooterColor(balance, nowMs, colors) },
-    { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' },
-  ];
+  // A directory that is not a repository still has a weekly budget, an account balance and a
+  // production version worth rendering — only the repo · branch segment actually needs git.
+  const segments: TuiFooterSegment[] = [{ text: weeklyText, color: tuiFooterColor(balance, nowMs, colors) }];
+  if (git.isRepo && git.root && git.branch) segments.push({ text: `${basename(git.root)} · ${git.branch}`, color: 'gray' });
   if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null && Number.isFinite(balance.balanceUsd)) {
     segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance), colors) });
   }
