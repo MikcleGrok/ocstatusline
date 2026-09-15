@@ -3,7 +3,7 @@ import { jsx } from '@opentui/solid/jsx-runtime';
 import { RGBA } from '@opentui/core';
 import type { TuiPluginModule } from '@opencode-ai/plugin/tui';
 import type { Message, Session } from '@opencode-ai/sdk/v2';
-import { formatTuiFooterSegments, formatTuiModelCost, getTuiGitInfo, gitInfoForRoute, tuiRouteSnapshot, type TuiFooterSegment, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
+import { formatTuiFooterSegments, formatTuiModelCost, getTuiGitInfo, gitInfoForRoute, tuiRouteKey, tuiRouteSnapshot, type TuiFooterSegment, type TuiGitInfo, type TuiRouteSnapshot } from '../../src/tui/footer.js';
 import { readProjectStatus } from '../../src/data/project-status.js';
 import { updateWeeklyState } from '../../src/data/openrouter-weekly.js';
 import { fetchOpenRouterStatusViaBinary } from '../../src/tui/openrouter-subprocess.js';
@@ -19,6 +19,7 @@ export function setTuiJsxForTests(next: TuiJsx): void {
 const BALANCE_REFRESH_INTERVAL = 60_000;
 const GIT_REFRESH_INTERVAL = 10_000;
 const STATUS_REFRESH_INTERVAL = 2_000;
+const SESSION_COST_REFRESH_INTERVAL = 15_000;
 const ROUTE_POLL_INTERVAL = 100;
 const MESSAGE_CONCURRENCY = 8;
 const SESSION_LIST_STABLE_PASSES = 2;
@@ -126,8 +127,10 @@ const module: TuiPluginModule = {
     let loadedMessageSessions = new Set<string>();
     let sessionCostRootID: string | null = null;
     let sessionCostRouteKey: string | null = null;
+    const sessionCostCache = new Map<string, TuiFooterSegment>();
     let sessionCostGeneration = 0;
     let sessionCostController: AbortController | null = null;
+    let sessionCostRefresh: Promise<void> | null = null;
     const sessionMessageRequests = new Map<string, { token: number; controller: AbortController }>();
     let sessionMutationRevision = 0;
     let messageMutationRevision = 0;
@@ -246,9 +249,19 @@ const module: TuiPluginModule = {
         return false;
       }
     };
+    // Stale-while-revalidate for the session-cost aggregate. A recompute nulls sessionCostRouteKey,
+    // so without this the renderer blanked `$session` on every refresh, not just on first load. The
+    // cache is keyed by the route key a computation succeeded under, so a value is only ever replaced
+    // by a newer successful computation for that same key, and a different session never inherits
+    // another session's total — it shows nothing until its own first computation lands.
+    const cacheSessionCost = (key: string | null, segment: TuiFooterSegment | null): TuiFooterSegment | null => {
+      if (key && segment) sessionCostCache.set(key, segment);
+      return segment;
+    };
     const currentSessionCost = (snapshot: TuiRouteSnapshot): TuiFooterSegment | null => {
-      if (api.route.current.name !== 'session' || !snapshot.key || snapshot.key !== sessionCostRouteKey) return null;
-      return aggregateSessionCost(sessionCosts, sessionMessages, loadedMessageSessions, sessionCostRootID);
+      if (api.route.current.name !== 'session' || !snapshot.key) return null;
+      if (snapshot.key === sessionCostRouteKey) return cacheSessionCost(snapshot.key, aggregateSessionCost(sessionCosts, sessionMessages, loadedMessageSessions, sessionCostRootID));
+      return sessionCostCache.get(snapshot.key) ?? null;
     };
     const refreshSessionCosts = async (snapshot: TuiRouteSnapshot) => {
       sessionCostController?.abort();
@@ -316,6 +329,7 @@ const module: TuiPluginModule = {
         await Promise.all(Array.from({ length: Math.min(MESSAGE_CONCURRENCY, scope.length) }, loadWorker));
         if (disposed || controller.signal.aborted || generation !== sessionCostGeneration) return;
         sessionCostRouteKey = snapshot.key;
+        cacheSessionCost(snapshot.key, aggregateSessionCost(sessionCosts, sessionMessages, loadedMessageSessions, sessionCostRootID));
         for (const [id, mutation] of sessionMutations) {
           if (mutation.revision <= sessionMutationRevision) sessionMutations.delete(id);
         }
@@ -333,25 +347,41 @@ const module: TuiPluginModule = {
         }, RETRY_DELAY);
       }
     };
+    // Tracks the refresh that is in flight so the wall-clock backstop below never piles a second
+    // aggregate on top of one that is still running; a route change still preempts unconditionally.
+    const startSessionCostRefresh = (snapshot: TuiRouteSnapshot): void => {
+      const pending = refreshSessionCosts(snapshot);
+      sessionCostRefresh = pending;
+      const settle = () => { if (sessionCostRefresh === pending) sessionCostRefresh = null; };
+      void pending.then(settle, settle);
+    };
     const activeSessionScope = (): Set<string> => {
       const selectedID = sessionIDFromRoute(api);
       if (sessionCostRootID) return sessionScope(sessionCosts, sessionCostRootID);
       return selectedID && sessionCosts.has(selectedID) ? sessionScope(sessionCosts, selectedID) : new Set();
     };
     const isActiveSession = (sessionID: string): boolean => activeSessionScope().has(sessionID);
-    const forgetForeignSession = (sessionID: string) => {
-      sessionMutations.delete(sessionID);
-      sessionCosts.delete(sessionID);
-      sessionMessages.delete(sessionID);
-      loadedMessageSessions.delete(sessionID);
-      sessionMessageRequests.get(sessionID)?.controller.abort();
-      sessionMessageRequests.delete(sessionID);
+    // Prunes the one sessionCostCache entry a session could ever have populated, so a removed or
+    // forgotten session's cached total does not leak forever across session switches on a
+    // long-running process. Keyed exactly the way tuiRouteSnapshot builds it for a session route.
+    const forgetSessionCostCache = (sessionID: string, cwd: string | undefined) => {
+      const key = tuiRouteKey({ name: 'session', params: { sessionID } }, cwd);
+      if (key) sessionCostCache.delete(key);
+    };
+    const forgetForeignSession = (session: Session) => {
+      sessionMutations.delete(session.id);
+      sessionCosts.delete(session.id);
+      sessionMessages.delete(session.id);
+      loadedMessageSessions.delete(session.id);
+      sessionMessageRequests.get(session.id)?.controller.abort();
+      sessionMessageRequests.delete(session.id);
+      forgetSessionCostCache(session.id, session.directory);
     };
     const updateSession = (session: Session) => {
       const selectedID = sessionIDFromRoute(api);
       const scope = activeSessionScope();
       if (session.id !== selectedID && !scope.has(session.id) && (!session.parentID || !scope.has(session.parentID))) {
-        forgetForeignSession(session.id);
+        forgetForeignSession(session);
         return;
       }
       const previous = sessionCosts.get(session.id);
@@ -367,7 +397,7 @@ const module: TuiPluginModule = {
     };
     const removeSession = (session: Session) => {
       if (!isActiveSession(session.id) && session.id !== sessionIDFromRoute(api)) {
-        forgetForeignSession(session.id);
+        forgetForeignSession(session);
         return;
       }
       sessionMessageRequests.get(session.id)?.controller.abort();
@@ -377,6 +407,7 @@ const module: TuiPluginModule = {
       sessionCosts.delete(session.id);
       sessionMessages.delete(session.id);
       loadedMessageSessions.delete(session.id);
+      forgetSessionCostCache(session.id, session.directory);
       const selectedID = sessionIDFromRoute(api);
       if (selectedID === session.id) sessionCostRootID = null;
       else if (selectedID && sessionCosts.has(selectedID)) sessionCostRootID = rootSessionID(sessionCosts, selectedID);
@@ -401,7 +432,7 @@ const module: TuiPluginModule = {
     };
     const checkRoute = () => {
       const snapshot = tuiRouteSnapshot(api.route.current, api.state);
-      if (publishRoute(snapshot)) { void refreshGit(snapshot); void refreshStatus(snapshot); void refreshSessionCosts(snapshot); }
+      if (publishRoute(snapshot)) { void refreshGit(snapshot); void refreshStatus(snapshot); startSessionCostRefresh(snapshot); }
     };
     const cleanups = [
       api.event.on('message.updated', (event) => updateMessage(event.properties.info.sessionID, event.properties.info)),
@@ -417,16 +448,20 @@ const module: TuiPluginModule = {
     const gitTimer = setInterval(() => void refreshGit(currentSnapshot()), GIT_REFRESH_INTERVAL);
     const statusTimer = setInterval(() => void refreshStatus(currentSnapshot()), STATUS_REFRESH_INTERVAL);
     const routeTimer = setInterval(checkRoute, ROUTE_POLL_INTERVAL);
+    // Wall-clock backstop for the event-driven recompute: events still refresh the aggregate
+    // immediately, this only guarantees a floor when an event class is missed or never arrives.
+    const sessionCostTimer = setInterval(() => { if (!sessionCostRefresh) startSessionCostRefresh(currentSnapshot()); }, SESSION_COST_REFRESH_INTERVAL);
     if (openrouterEnabled) void refreshBalance();
     void refreshGit(currentSnapshot());
     void refreshStatus(currentSnapshot());
-    void refreshSessionCosts(currentSnapshot());
+    startSessionCostRefresh(currentSnapshot());
     api.lifecycle.onDispose(() => {
       disposed = true;
       if (timer) clearInterval(timer);
       clearInterval(gitTimer);
       clearInterval(statusTimer);
       clearInterval(routeTimer);
+      clearInterval(sessionCostTimer);
       balanceController.abort();
       gitController?.abort();
       sessionCostController?.abort();

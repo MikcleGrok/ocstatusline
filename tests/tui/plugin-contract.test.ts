@@ -271,6 +271,25 @@ describe('TUI plugin contract', () => {
     }
   });
 
+  it('re-runs the session-cost aggregate on a background interval without any triggering event', async () => {
+    // Backstop for a missed or unhandled event class: the aggregate has to go stale-free on its own,
+    // so a plain wall-clock interval (10-30s) must re-issue session.list with nothing else happening.
+    vi.useFakeTimers();
+    const fixture = makeSessionCostApi([{ id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } }], () => 5);
+    try {
+      await runTui(fixture.api);
+      await advanceUntil(() => fixture.footer().includes('$5.00'));
+      const settledCalls = fixture.listCalls.length;
+
+      // 30s is the top of the allowed refresh window, so any interval in range has fired by now.
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(fixture.listCalls.length).toBeGreaterThan(settledCalls);
+    } finally {
+      fixture.dispose();
+    }
+  });
+
   it('recomputes the session cost immediately when a tracked event fires mid-interval, not only via the 15s timer', async () => {
     // Gap: makeSessionCostApi's event.on stub used to discard every handler, so no test ever fired
     // a real event through it — only the wall-clock backstop above was covered. A message mutation
@@ -295,6 +314,53 @@ describe('TUI plugin contract', () => {
     }
   });
 
+  it('stops issuing session.list calls once the plugin is disposed', async () => {
+    // Gap: nothing exercised the sessionCostTimer's clearInterval on dispose with fake timers.
+    vi.useFakeTimers();
+    const fixture = makeSessionCostApi([{ id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } }], () => 5);
+    await runTui(fixture.api);
+    await advanceUntil(() => fixture.footer().includes('$5.00'));
+    const callsAtDispose = fixture.listCalls.length;
+
+    fixture.dispose();
+    await vi.advanceTimersByTimeAsync(30_000); // well past the 15s SESSION_COST_REFRESH_INTERVAL
+
+    expect(fixture.listCalls.length).toBe(callsAtDispose);
+  });
+
+  it('drops the cached session cost for a removed session while keeping other sessions cached', async () => {
+    // Gap: forgetForeignSession/removeSession never pruned sessionCostCache, so a session's cached
+    // total leaked forever across session switches on a long-running process.
+    vi.useFakeTimers();
+    const fixture = makeSessionCostApi([
+      { id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } },
+      { id: 'session-2', directory: '/work/project', cost: 0, time: { created: 2, updated: 2 } },
+    ], (sessionID) => sessionID === 'session-1' ? 5 : 9);
+    try {
+      await runTui(fixture.api);
+      await advanceUntil(() => fixture.footer().includes('$5.00'));
+
+      fixture.goTo('session-2');
+      await advanceUntil(() => fixture.footer().includes('$9.00'));
+
+      // session-1 is removed while session-2 is the active route, so it goes through the
+      // "foreign session" cleanup path (forgetForeignSession), not the active-route path.
+      fixture.fire('session.deleted', { properties: { info: { id: 'session-1', directory: '/work/project', cost: 5, time: { created: 1, updated: 1 } } } });
+
+      // Block the server so navigating back cannot mask a stale cache entry with a fresh recompute.
+      fixture.block(true);
+      fixture.goTo('session-1');
+      await vi.advanceTimersByTimeAsync(200);
+      expect(fixture.footer()).not.toContain('$5.00');
+
+      fixture.goTo('session-2');
+      await vi.advanceTimersByTimeAsync(200);
+      expect(fixture.footer()).toContain('$9.00');
+    } finally {
+      fixture.dispose();
+    }
+  });
+
   it('renders session cost with weekly/account balances but no repository segment outside a git repository', async () => {
     // Gap: every session-cost test mocked getTuiGitInfo as isRepo:true, and every non-git footer
     // test exercised formatTuiFooterSegments directly rather than a real sessionCost segment
@@ -313,6 +379,53 @@ describe('TUI plugin contract', () => {
       expect(text).toContain('$12.34');
       expect(text).toContain('$50');
       expect(text).not.toContain('project · main');
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  it('keeps showing the last computed session cost while a recompute for the same session is still in flight', async () => {
+    // A recompute clears sessionCostRouteKey, so without a cache `$session` vanished from the footer
+    // on every refresh — not just on first load. A cached value is only ever replaced by a newer
+    // successful computation for the same key, never blanked mid-flight.
+    vi.useFakeTimers();
+    const fixture = makeSessionCostApi([{ id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } }], () => 5);
+    try {
+      await runTui(fixture.api);
+      await advanceUntil(() => fixture.footer().includes('$5.00'));
+
+      fixture.block(true);
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(fixture.listCalls.length).toBeGreaterThan(0);
+      expect(fixture.footer()).toContain('$5.00');
+    } finally {
+      fixture.dispose();
+    }
+  });
+
+  it('shows a cached session cost only under its own session key', async () => {
+    vi.useFakeTimers();
+    const fixture = makeSessionCostApi([
+      { id: 'session-1', directory: '/work/project', cost: 0, time: { created: 1, updated: 1 } },
+      { id: 'session-2', directory: '/work/project', cost: 0, time: { created: 2, updated: 2 } },
+    ], (sessionID) => sessionID === 'session-1' ? 5 : 9);
+    try {
+      await runTui(fixture.api);
+      await advanceUntil(() => fixture.footer().includes('$5.00'));
+
+      fixture.block(true);
+      fixture.goTo('session-2');
+      await vi.advanceTimersByTimeAsync(200);
+
+      // Nothing has ever been computed for session-2, so it shows nothing — never session-1's total.
+      expect(fixture.footer()).not.toContain('$5.00');
+      expect(fixture.footer()).not.toContain('$9.00');
+
+      fixture.goTo('session-1');
+      await vi.advanceTimersByTimeAsync(200);
+
+      expect(fixture.footer()).toContain('$5.00');
     } finally {
       fixture.dispose();
     }
