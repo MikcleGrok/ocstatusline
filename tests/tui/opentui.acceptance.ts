@@ -101,6 +101,7 @@ async function main(): Promise<void> {
   const socketPath = join(home, '.secretd', 'sock');
   const originalHome = process.env.HOME;
   const originalBinary = process.env.OCSTATUSLINE_BINARY;
+  const originalPath = process.env.PATH;
   let server: Server | undefined;
   let disposePlugin: (() => void) | undefined;
   let renderer: { destroy: () => void } | undefined;
@@ -109,16 +110,22 @@ async function main(): Promise<void> {
     await mkdir(join(home, '.secretd'), { recursive: true });
     await mkdir(join(home, '.config', 'ocstatusline'), { recursive: true });
     await writeFile(join(home, '.config', 'ocstatusline', 'settings.json'), JSON.stringify({ openrouter: { enabled: true, weeklyBudgetUsd: 25 } }));
-    const binaryPath = join(home, 'ocstatusline-fixture');
+    const binaryPath = join(home, 'ocstatusline');
     await writeFile(binaryPath, '#!/bin/sh\ntest "$1" = openrouter-status\nprintf \'{"balance":{"source":"account","balanceUsd":10},"usage":0}\\n\'\n');
     await chmod(binaryPath, 0o755);
     process.env.HOME = home;
     process.env.OCSTATUSLINE_BINARY = binaryPath;
+    process.env.PATH = `${home}:${originalPath ?? ''}`;
     server = await listenForCredits(socketPath);
     const plugin = (await import('../../.opencode/tui-plugins/ocstatusline.js')).default as { tui: (api: unknown) => Promise<void> };
     // @ts-expect-error OpenTUI's Bun entrypoint is executable test infrastructure without declarations.
     const { testRender } = await import('../../.opencode/node_modules/@opentui/solid/index.bun.js') as unknown as { testRender: TestRender };
     let appBottom: Slot | undefined;
+    let homeFooter: Slot | undefined;
+    const eventHandlers = new Map<string, (event: unknown) => void>();
+    const rootSession = { id: 'root-session', directory: process.cwd(), parentID: undefined, cost: 1 };
+    const childSession = { id: 'acceptance-session', directory: process.cwd(), parentID: rootSession.id, cost: 2 };
+    const messages = new Map<string, number>([[rootSession.id, 3], [childSession.id, 4]]);
     const acceptanceModel = { cost: { input: 0.15, output: 0.6, cache: { read: 0.02, write: 0.3 }, experimentalOver200K: { input: 0.3, output: 1.2, cache: { read: 0.04, write: 0.6 } } }, limit: { context: 1_000_000 } };
     const api = {
       route: { current: { name: 'session', params: { sessionID: 'acceptance-session' } } },
@@ -127,27 +134,38 @@ async function main(): Promise<void> {
         session: { get: (sessionID: string) => sessionID === 'acceptance-session' ? { directory: process.cwd(), model: { providerID: 'acceptance-provider', id: 'acceptance-model' } } : undefined },
         provider: [{ id: 'acceptance-provider', models: { 'acceptance-model': acceptanceModel } }],
       },
-      event: { on: () => () => undefined },
+      event: { on: (name: string, handler: (event: unknown) => void) => { eventHandlers.set(name, handler); return () => eventHandlers.delete(name); } },
       lifecycle: { onDispose: (cleanup: () => void) => { disposePlugin = cleanup; } },
-      slots: { register: (registration: { slots: { app_bottom?: Slot } }) => { if (registration.slots.app_bottom) appBottom = registration.slots.app_bottom; } },
+      client: {
+        session: {
+          list: async () => ({ data: [rootSession, childSession] }),
+          messages: async ({ sessionID, before }: { sessionID: string; before?: string }) => ({ data: before ? [] : messages.has(sessionID) ? [{ info: { id: `${sessionID}-message`, role: 'assistant', cost: messages.get(sessionID), time: { created: 1 } } }] : [] }),
+        },
+      },
+      // The acceptance harness exposes plugin registrations but not OpenCode's host-level single_winner composer. We render both production slots directly and do not claim to verify host arbitration here.
+      slots: { register: (registration: { slots: { app_bottom?: Slot; home_footer?: Slot } }) => { if (registration.slots.app_bottom) appBottom = registration.slots.app_bottom; if (registration.slots.home_footer) homeFooter = registration.slots.home_footer; } },
     };
 
     await plugin.tui(api as never);
     assert.ok(appBottom, 'production plugin did not register app_bottom');
+    assert.ok(homeFooter, 'production plugin did not register home_footer');
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    const setup = await testRender(() => appBottom!(), { width: 240, height: 4, footerHeight: 1 });
+    let activeFooter: Slot = appBottom;
+    const renderFooter = () => activeFooter();
+    let setup = await testRender(renderFooter, { width: 240, height: 4, footerHeight: 1 });
     renderer = setup.renderer;
     const expected = expectedCheckoutIdentity();
     const expectedRepository = `${expected.repo} · ${expected.ref}`;
     const capture = await waitForNativeFrame(setup, ({ frame, spans }) => {
       const spanText = spans.map((span) => span.text).join('');
-      return frame.includes('$25.00') && frame.includes('$10') && frame.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && frame.includes(expectedRepository) && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && spanText.includes(expectedRepository);
+      return frame.includes('$7.00') && frame.includes('$25.00') && frame.includes('$10') && frame.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && frame.includes(expectedRepository) && spanText.includes('$7.00') && spanText.includes('$25.00') && spanText.includes('$10') && spanText.includes('$0.15/0.6 | $0.3/1.2 >200K · 1M') && spanText.includes(expectedRepository);
     }, 10_000);
     const { frame, spans } = capture;
     const spanText = spans.map((span) => span.text).join('');
     const weeklySpan = spans.find((span) => span.text === '$25.00');
     const accountSpan = spans.find((span) => span.text === '$10');
     assert.match(frame, /\$25\.00/);
+    assert.match(frame, /\$7\.00/);
     assert.ok(frame.includes(expectedRepository), `footer did not contain expected repository/ref: ${expectedRepository}`);
     assert.match(frame, /\$10/);
     assert.match(frame, /\$0\.15\/0\.6 \| \$0\.3\/1\.2 >200K · 1M/);
@@ -161,6 +179,45 @@ async function main(): Promise<void> {
     assert.notEqual(weeklySpan.fg.buffer[0], 128, 'weekly footer stayed gray');
     assert.notEqual(accountSpan.fg.buffer[0], 128, 'account footer stayed gray');
     assert.ok(setup.getNativeStats().nativeFrameCount > 0, 'OpenTUI native renderer did not render a frame');
+
+    api.route.current.name = 'home';
+    api.route.current.params = {} as unknown as { sessionID: string };
+    activeFooter = homeFooter;
+    eventHandlers.get('message.updated')?.({ properties: { info: { id: `${childSession.id}-message`, sessionID: childSession.id, role: 'assistant', cost: 4, time: { created: 1 } } } });
+    setup.renderer.destroy();
+    setup = await testRender(renderFooter, { width: 240, height: 4, footerHeight: 1 });
+    const homeCapture = await waitForNativeFrame(setup, ({ frame }) => frame.includes('$25.00') && !frame.includes('$7.00'), 5_000);
+    assert.ok(homeCapture.frame.includes('$25.00'), 'home footer did not render weekly balance');
+    assert.ok(!homeCapture.frame.includes('$7.00'), 'home footer leaked the session aggregate');
+
+    api.route.current.name = 'session';
+    api.route.current.params = { sessionID: childSession.id };
+    activeFooter = appBottom;
+    eventHandlers.get('message.updated')?.({ properties: { info: { id: `${childSession.id}-message`, sessionID: childSession.id, role: 'assistant', cost: 4, time: { created: 1 } } } });
+    setup.renderer.destroy();
+    setup = await testRender(renderFooter, { width: 240, height: 4, footerHeight: 1 });
+    const sessionCapture = await waitForNativeFrame(setup, ({ frame }) => frame.includes('$7.00'), 5_000);
+    assert.ok(sessionCapture.frame.includes('$7.00'), 'route transition did not restore session aggregate');
+
+    messages.set(rootSession.id, 8);
+    eventHandlers.get('message.updated')?.({ properties: { info: { id: `${rootSession.id}-message`, sessionID: rootSession.id, role: 'assistant', cost: 8, time: { created: 1 } } } });
+    setup.renderer.destroy();
+    setup = await testRender(renderFooter, { width: 240, height: 4, footerHeight: 1 });
+    const bumpedCapture = await waitForNativeFrame(setup, ({ frame }) => frame.includes('$12.00'), 5_000);
+    assert.ok(bumpedCapture.frame.includes('$12.00'), 'message mutation did not trigger a reactive re-render');
+
+    eventHandlers.get('message.removed')?.({ properties: { sessionID: rootSession.id, messageID: `${rootSession.id}-message` } });
+    setup.renderer.destroy();
+    setup = await testRender(renderFooter, { width: 240, height: 4, footerHeight: 1 });
+    const removedCapture = await waitForNativeFrame(setup, ({ frame }) => frame.includes('$4.00'), 5_000);
+    assert.ok(removedCapture.frame.includes('$4.00'), 'message.removed did not remove the aggregate cost');
+
+    eventHandlers.get('session.status')?.({ properties: { sessionID: childSession.id, status: 'busy' } });
+    eventHandlers.get('session.idle')?.({ properties: { sessionID: childSession.id } });
+    eventHandlers.get('session.error')?.({ properties: { sessionID: childSession.id, error: { name: 'AcceptanceError', message: 'fixture' } } });
+    eventHandlers.get('session.created')?.({ properties: { info: { id: 'new-session', directory: process.cwd(), parentID: rootSession.id, cost: 5 } } });
+    eventHandlers.get('session.updated')?.({ properties: { info: { id: 'new-session', directory: process.cwd(), parentID: rootSession.id, cost: 5 } } });
+    eventHandlers.get('session.deleted')?.({ properties: { info: { id: 'new-session', directory: process.cwd(), parentID: rootSession.id, cost: 5 } } });
   } finally {
     disposePlugin?.();
     renderer?.destroy();
@@ -169,6 +226,8 @@ async function main(): Promise<void> {
     else process.env.HOME = originalHome;
     if (originalBinary === undefined) delete process.env.OCSTATUSLINE_BINARY;
     else process.env.OCSTATUSLINE_BINARY = originalBinary;
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
     await rm(home, { recursive: true, force: true });
   }
 }

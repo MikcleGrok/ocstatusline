@@ -129,12 +129,12 @@ describe('runTuiInstall file copy', () => {
     expect(pluginSource).toContain("fg: tuiTextColor(weekly.color), wrapMode: 'none', children: weekly.text");
     expect(pluginSource).toContain("fg: 'gray', wrapMode: 'none', children: ' · '");
     expect(pluginSource).toContain("fg: repository.color, wrapMode: 'none', flexShrink: 1, overflow: 'hidden', children: repository.text");
-    expect(pluginSource).toContain("modelCost ? jsx('text', { fg: tuiTextColor(modelCost.color), wrapMode: 'none', marginLeft: 'auto', children: modelCost.text })");
+    expect(pluginSource).toContain("modelCost ? renderJsx('text', { fg: tuiTextColor(modelCost.color), wrapMode: 'none', marginLeft: 'auto', children: modelCost.text })");
     expect(pluginSource).toContain("fg: tuiTextColor(account.color), wrapMode: 'none', children: account.text");
     expect(pluginSource).toContain('const modelCost = currentModelCost(api);');
     expect(pluginSource).toContain("children: modelCost.text");
-    expect(pluginSource).toContain("account ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })");
-    expect(pluginSource.indexOf("children: modelCost.text")).toBeLessThan(pluginSource.indexOf("account ? jsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })"));
+    expect(pluginSource).toContain("account ? renderJsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })");
+    expect(pluginSource.indexOf("children: modelCost.text")).toBeLessThan(pluginSource.indexOf("account ? renderJsx('text', { fg: 'gray', wrapMode: 'none', children: ' · ' })"));
   });
 
   it('refreshes project status for the same route without reading in the render callback', () => {
