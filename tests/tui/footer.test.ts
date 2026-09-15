@@ -144,10 +144,25 @@ describe('TUI footer', () => {
     ]);
   });
 
-  it('omits only the repository segment when git information is incomplete', () => {
+  it('omits only the repository segment when git information is incomplete and no cwd is given', () => {
     expect(formatTuiFooterSegments(47.78, { isRepo: true, root: '/work/sender', branch: null }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
     expect(formatTuiFooterSegments(47.78, { isRepo: false, root: '/work/sender', branch: 'main' }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
     expect(formatTuiFooterSegments(47.78, { isRepo: true, root: null, branch: 'main' }, 0)).toEqual([{ text: '$47.78', color: 'gray' }]);
+  });
+
+  it('renders the folder name from the actual cwd when git is unavailable, with no branch and no dangling separator', () => {
+    const noGit = { isRepo: false, root: null, branch: null };
+    expect(formatTuiFooterSegments(47.78, noGit, undefined, null, undefined, '/home/some-project')).toEqual([
+      { text: '$47.78', color: 'gray' },
+      { text: 'some-project', color: 'gray' },
+    ]);
+  });
+
+  it('prefers the git root and branch over the cwd when git information is complete (no regression)', () => {
+    expect(formatTuiFooterSegments(47.78, git, undefined, null, undefined, '/home/some-project')).toEqual([
+      { text: '$47.78', color: 'gray' },
+      { text: 'sender · DEV-15309', color: 'gray' },
+    ]);
   });
 
   it('parses preloaded git output without side effects', () => {

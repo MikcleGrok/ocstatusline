@@ -98,13 +98,22 @@ export function tuiFooterColor(balance: TuiFooterBalance, nowMs?: number, colors
   return severityColor(weeklyBalanceSeverity(balance, nowMs), colors);
 }
 
-export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null, colors: SeverityColors = DEFAULT_SEVERITY_COLORS): TuiFooterSegment[] {
+// The folder always renders when a directory is known: the git root's basename when git info is
+// complete, otherwise the actual cwd's basename (git.root is null outside a repository, so the
+// folder there can only come from the caller's own cwd). Only the branch text depends on git.
+function footerFolderSegment(git: TuiGitInfo, cwd: string | null): TuiFooterSegment | null {
+  if (git.isRepo && git.root && git.branch) return { text: `${basename(git.root)} · ${git.branch}`, color: 'gray' };
+  return cwd ? { text: basename(cwd), color: 'gray' } : null;
+}
+
+export function formatTuiFooterSegments(balance: TuiFooterBalance, git: TuiGitInfo, nowMs?: number, productionVersion: string | null = null, colors: SeverityColors = DEFAULT_SEVERITY_COLORS, cwd: string | null = null): TuiFooterSegment[] {
   const value = footerBalanceValue(balance);
   const weeklyText = formatFooterBalance(value);
-  // A directory that is not a repository still has a weekly budget, an account balance and a
-  // production version worth rendering — only the repo · branch segment actually needs git.
+  // A directory that is not a repository still has a weekly budget, an account balance, a
+  // production version and (per footerFolderSegment above) a folder name worth rendering.
   const segments: TuiFooterSegment[] = [{ text: weeklyText, color: tuiFooterColor(balance, nowMs, colors) }];
-  if (git.isRepo && git.root && git.branch) segments.push({ text: `${basename(git.root)} · ${git.branch}`, color: 'gray' });
+  const folder = footerFolderSegment(git, cwd);
+  if (folder) segments.push(folder);
   if (isAccountWeeklyBalance(balance) && balance.balanceUsd !== null && Number.isFinite(balance.balanceUsd)) {
     segments.push({ text: `$${Math.round(balance.balanceUsd)}`, color: severityColor(accountBalanceSeverity(balance), colors) });
   }

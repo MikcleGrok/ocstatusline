@@ -472,11 +472,13 @@ const module: TuiPluginModule = {
     const renderFooter = () => {
       const snapshot = currentSnapshot();
       const git = gitInfoForRoute(snapshot.key, gitSessionKey, lastGit);
-      const formattedSegments = formatTuiFooterSegments(openrouterWeekly, git, Date.now(), productionVersion, settings.severityColors);
+      const formattedSegments = formatTuiFooterSegments(openrouterWeekly, git, Date.now(), productionVersion, settings.severityColors, snapshot.cwd);
       const segments = openrouterEnabled ? formattedSegments : formattedSegments.slice(1);
       const weekly = openrouterEnabled ? segments[0] : undefined;
       const sessionCost = currentSessionCost(snapshot);
-      const repository = (git.isRepo && git.root && git.branch) ? segments[openrouterEnabled ? 1 : 0] : undefined;
+      // Mirrors formatTuiFooterSegments' own footerFolderSegment gating: the folder segment is
+      // present whenever git info is complete or a cwd is known, regardless of which one it is.
+      const repository = (git.isRepo && git.root && git.branch) || snapshot.cwd ? segments[openrouterEnabled ? 1 : 0] : undefined;
       const account = segments.find((segment) => segment.text.startsWith('$') && segment !== weekly);
       const modelCost = currentModelCost(api);
       const production = segments.find((segment) => segment.text.startsWith('prod '));
