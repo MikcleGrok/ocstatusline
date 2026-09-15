@@ -94,6 +94,34 @@ describe('runTuiInstall file copy', () => {
     }
   });
 
+  it('rewrites only internal src imports, including depth and extension', () => {
+    const source = [
+      "import { internal } from '../../src/data/internal.js';",
+      "export { exported } from '../../src/data/exported.js';",
+      "const dynamic = import('../../src/data/dynamic.js');",
+      "import '../../src/data/side-effect.js';",
+      'import { quoted } from "../../src/data/quoted.js";',
+      "import external from '../../packages/external.js';",
+      "import other from '../../src/data/other.ts';",
+      "const text = '../../src/data/text.js';",
+      "// import { commented } from '../../src/data/commented.js';",
+      "/* export { blocked } from '../../src/data/blocked.js'; */",
+    ].join('\n');
+
+    expect(rewritePluginImports(source)).toBe([
+      "import { internal } from '../src/data/internal.js';",
+      "export { exported } from '../src/data/exported.js';",
+      "const dynamic = import('../src/data/dynamic.js');",
+      "import '../src/data/side-effect.js';",
+      'import { quoted } from "../src/data/quoted.js";',
+      "import external from '../../packages/external.js';",
+      "import other from '../src/data/other.ts';",
+      "const text = '../../src/data/text.js';",
+      "// import { commented } from '../../src/data/commented.js';",
+      "/* export { blocked } from '../../src/data/blocked.js'; */",
+    ].join('\n'));
+  });
+
   it('keeps footer segments as direct non-wrapping text children on one row', () => {
     const pluginSource = readFileSync(join(REPO_ROOT, '.opencode/tui-plugins/ocstatusline.ts'), 'utf-8');
     expect(pluginSource).toContain("width: '100%', paddingLeft: 1, flexDirection: 'row', flexWrap: 'no-wrap', overflow: 'hidden'");

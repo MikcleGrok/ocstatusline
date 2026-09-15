@@ -179,7 +179,127 @@ function assertRepoRootLooksReal(repoRoot: string): void {
 // scripts/generate-tui-plugin-assets.ts applies the identical rewrite when it
 // bakes the plugin entry into the binary, instead of duplicating the rule.
 export function rewritePluginImports(source: string): string {
-  return source.replaceAll("'../../src/", "'../src/");
+  const replacements: Array<{ start: number; end: number; value: string }> = [];
+  const isIdentifierPart = (char: string | undefined): boolean => char !== undefined && /[A-Za-z0-9_$]/.test(char);
+  const skipTrivia = (start: number): number => {
+    let position = start;
+    while (position < source.length) {
+      if (/\s/.test(source[position])) {
+        position += 1;
+        continue;
+      }
+      if (source.startsWith('//', position)) {
+        const newline = source.indexOf('\n', position + 2);
+        position = newline === -1 ? source.length : newline + 1;
+        continue;
+      }
+      if (source.startsWith('/*', position)) {
+        const end = source.indexOf('*/', position + 2);
+        position = end === -1 ? source.length : end + 2;
+        continue;
+      }
+      break;
+    }
+    return position;
+  };
+  const stringEnd = (start: number): number | null => {
+    const quote = source[start];
+    let position = start + 1;
+    while (position < source.length) {
+      if (source[position] === '\\') {
+        position += 2;
+        continue;
+      }
+      if (source[position] === quote) return position + 1;
+      if (source[position] === '\n' || source[position] === '\r') return null;
+      position += 1;
+    }
+    return null;
+  };
+  const addReplacement = (start: number, end: number): void => {
+    const specifier = source.slice(start + 1, end - 1);
+    if (specifier.startsWith('../../src/')) replacements.push({ start, end, value: `${source[start]}../src/${specifier.slice('../../src/'.length)}${source[end - 1]}` });
+  };
+  const findFromSpecifier = (start: number): { start: number; end: number } | null => {
+    let position = start;
+    let depth = 0;
+    while (position < source.length) {
+      position = skipTrivia(position);
+      if (position >= source.length) return null;
+      if (source[position] === ';' && depth === 0) return null;
+      if (source[position] === '"' || source[position] === "'") {
+        const end = stringEnd(position);
+        position = end ?? source.length;
+        continue;
+      }
+      if (isIdentifierPart(source[position])) {
+        const wordStart = position;
+        while (isIdentifierPart(source[position])) position += 1;
+        if (source.slice(wordStart, position) !== 'from') continue;
+        const specifierStart = skipTrivia(position);
+        if (source[specifierStart] !== '"' && source[specifierStart] !== "'") continue;
+        const specifierEnd = stringEnd(specifierStart);
+        return specifierEnd === null ? null : { start: specifierStart, end: specifierEnd };
+      }
+      if (source[position] === '{' || source[position] === '(' || source[position] === '[') depth += 1;
+      if (source[position] === '}' || source[position] === ')' || source[position] === ']') depth = Math.max(0, depth - 1);
+      position += 1;
+    }
+    return null;
+  };
+
+  let position = 0;
+  while (position < source.length) {
+    const char = source[position];
+    if (char === '"' || char === "'" || char === '`') {
+      position = stringEnd(position) ?? source.length;
+      continue;
+    }
+    if (source.startsWith('//', position)) {
+      const newline = source.indexOf('\n', position + 2);
+      position = newline === -1 ? source.length : newline + 1;
+      continue;
+    }
+    if (source.startsWith('/*', position)) {
+      const end = source.indexOf('*/', position + 2);
+      position = end === -1 ? source.length : end + 2;
+      continue;
+    }
+    if (!isIdentifierPart(char) || (position > 0 && isIdentifierPart(source[position - 1]))) {
+      position += 1;
+      continue;
+    }
+    const wordStart = position;
+    while (isIdentifierPart(source[position])) position += 1;
+    const word = source.slice(wordStart, position);
+    if (word !== 'import' && word !== 'export') continue;
+    if (word === 'import' && source[position - 1] === '.') continue;
+    const next = skipTrivia(position);
+    if (word === 'import' && source[next] === '.') continue;
+    if (word === 'import' && source[next] === '(') {
+      const specifierStart = skipTrivia(next + 1);
+      if (source[specifierStart] === '"' || source[specifierStart] === "'") {
+        const specifierEnd = stringEnd(specifierStart);
+        if (specifierEnd !== null) addReplacement(specifierStart, specifierEnd);
+      }
+      continue;
+    }
+    if (word === 'import' && (source[next] === '"' || source[next] === "'")) {
+      const specifierEnd = stringEnd(next);
+      if (specifierEnd !== null) addReplacement(next, specifierEnd);
+      continue;
+    }
+    const specifier = findFromSpecifier(next);
+    if (specifier) addReplacement(specifier.start, specifier.end);
+  }
+
+  let result = '';
+  let previous = 0;
+  for (const replacement of replacements) {
+    result += source.slice(previous, replacement.start) + replacement.value;
+    previous = replacement.end;
+  }
+  return result + source.slice(previous);
 }
 
 // Reads the plugin entry + its dependency closure off a real checkout into

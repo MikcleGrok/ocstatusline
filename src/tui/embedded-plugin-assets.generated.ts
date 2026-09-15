@@ -20,7 +20,8 @@ export const PLUGIN_ASSET_FILES: Array<{ relativePath: string; content: string }
 ];
 
 export const REQUIRED_PACKAGE_JSON_DEPENDENCIES: Record<string, string> = {
-  "@opencode-ai/plugin": "1.18.5",
+  "@opencode-ai/sdk": "1.18.30",
+  "@opencode-ai/plugin": "1.18.30",
   "@opentui/core": "0.4.5",
   "@opentui/keymap": "0.4.5",
   "@opentui/solid": "0.4.5",
