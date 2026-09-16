@@ -7,4 +7,5 @@ build/
 !.env.dist
 !.github/
 !.opencode/
+.opencode/package-lock.json
 !.opencode/plugins/
