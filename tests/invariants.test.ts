@@ -64,7 +64,7 @@ describe('process-spawning invariants', () => {
 
   it('never uses execSync/spawnSync/exec — those take a shell string', () => {
     const offenders = sources
-      .filter((s) => /\b(execSync|spawnSync|[^F]\bexec)\s*\(/.test(s.text))
+      .filter((s) => /\b(?:execSync|spawnSync)\s*\(|(?<![\w.])exec\s*\(/.test(s.text))
       .map((s) => s.file);
     expect(offenders).toEqual([]);
   });
@@ -76,17 +76,24 @@ describe('process-spawning invariants', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('calls execFileSync only with an argv array as its second argument', () => {
+  it('allows only the fixed ps argv lookup used for weekly lock ownership', () => {
     const calls: { file: string; snippet: string }[] = [];
+    const staticArgv = /^execFileSync\(\s*['"][^'"]+['"]\s*,\s*\[/;
+    const weeklyProcessIdentity = /^execFileSync\(\s*['"]ps['"]\s*,\s*\[\s*['"]-p['"]\s*,\s*String\(pid\)\s*,\s*['"]-o['"]\s*,\s*['"]lstart=['"]\s*\]\s*,\s*\{[^}]*timeout:\s*PROCESS_START_IDENTITY_TIMEOUT_MS[^}]*LC_ALL:\s*['"]C['"]/;
     for (const s of sources) {
-      const re = /execFileSync\(\s*([^)]{0,200})/g;
+      const re = /\bexecFileSync\s*\(/g;
       let m: RegExpExecArray | null;
-      while ((m = re.exec(s.text)) !== null) calls.push({ file: s.file, snippet: m[1] });
+      while ((m = re.exec(s.text)) !== null) calls.push({ file: s.file, snippet: s.text.slice(m.index, m.index + 220) });
     }
     expect(calls.length).toBeGreaterThan(0);
     for (const call of calls) {
-      expect(call.snippet, `${call.file}: ${call.snippet}`).toMatch(/^['"][^'"]+['"]\s*,\s*\[/);
+      expect(staticArgv.test(call.snippet) || weeklyProcessIdentity.test(call.snippet), `${call.file}: ${call.snippet}`).toBe(true);
     }
+    expect("execFileSync('git', ['status'])").toMatch(staticArgv);
+    expect("execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], { encoding: 'utf8', timeout: PROCESS_START_IDENTITY_TIMEOUT_MS, env: { ...process.env, LC_ALL: 'C' })").toMatch(weeklyProcessIdentity);
+    expect("execFileSync(command, ['-p', String(pid), '-o', 'lstart='])").not.toMatch(staticArgv);
+    expect("execFileSync('ps', command)").not.toMatch(staticArgv);
+    expect("execFileSync('ps -p ' + pid)").not.toMatch(staticArgv);
   });
 });
 
@@ -96,7 +103,20 @@ describe('install invariants', () => {
     for (const target of ['test-unit', 'test-functional', 'test-acceptance', 'test-all']) {
       expect(makefile.split(/\r?\n/).some((line) => line.startsWith(`${target}:`)), `${target} target`).toBe(true);
     }
-    expect(makefile).toMatch(/ci-test:[^\n]*\btest-unit\b[^\n]*\btest-functional\b[^\n]*\bacceptance-tui\b[^\n]*\bsmoke\b/);
+    const ciRecipe = makeRecipe(makefile, 'ci-test');
+    expect(ciRecipe).toEqual([
+      '$(MAKE) image',
+      '$(MAKE) install',
+      '$(MAKE) typecheck',
+      '$(MAKE) test-unit',
+      '$(MAKE) test-functional',
+      '$(MAKE) acceptance-tui',
+      '$(MAKE) build-all',
+      '$(MAKE) release-daemon-lifecycle',
+      '$(MAKE) smoke',
+      '$(MAKE) test-distribution',
+    ]);
+    expect(ciRecipe.join('\n')).not.toContain('verify-distribution');
   });
 
   it('installs root and project-local dependencies in that order', () => {
@@ -141,10 +161,18 @@ describe('install invariants', () => {
     expect(releaseRecipe).toEqual(expect.arrayContaining([
       '$(MAKE) test-unit',
       '$(MAKE) test-functional',
-      '$(MAKE) build-all',
-      '$(MAKE) manifest',
+      '$(MAKE) test-distribution',
+      '$(MAKE) verify-distribution',
     ]));
     expect(releaseRecipe.join('\n')).not.toMatch(/github|workflow|publish|upload/i);
+  });
+
+  it('uses an ephemeral host port for the CI mock while keeping the local port discoverable', () => {
+    expect(makefile).toMatch(/MOCK_PORT\s+\?= 4096/);
+    expect(makefile).toMatch(/ifeq \(\$\(CI\),true\)\s+MOCK_PORT := 0\s+endif/);
+    expect(ciCompose).toContain('- "${MOCK_PORT:-0}:4096"');
+    expect(compose).toContain('MOCK_PORT: "4096"');
+    expect(compose).toContain('http://127.0.0.1:4096/healthz');
   });
 
   it('runs the native TUI acceptance gate from the .opencode module cwd before smoke and artifacts', () => {
@@ -152,10 +180,27 @@ describe('install invariants', () => {
     expect(acceptanceRecipe.some((line) => line.includes('timeout --foreground --kill-after='))).toBe(true);
     expect(makefile).toContain('$(DC) run --rm --no-deps --workdir /src/.opencode -v "$(GIT_COMMON_DIR):/git:ro" -e GIT_DIR="$(ACCEPTANCE_GIT_DIR)" -e GIT_WORK_TREE=/src test-runner timeout --foreground --kill-after=$(ACCEPTANCE_TUI_KILL_AFTER) $(ACCEPTANCE_TUI_TIMEOUT) bun run ../tests/tui/opentui.acceptance.ts');
     expect(makefile).toContain('OpenTUI acceptance exceeded $(ACCEPTANCE_TUI_TIMEOUT) wall-clock deadline');
-    expect(makefile).toMatch(/ci-test:[^\n]*\bacceptance-tui\b[^\n]*\bsmoke\b/);
+    const ciRecipe = makeRecipe(makefile, 'ci-test');
+    expect(ciRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(ciRecipe.indexOf('$(MAKE) smoke'));
+    expect(ciRecipe.indexOf('$(MAKE) build-all')).toBeLessThan(ciRecipe.indexOf('$(MAKE) release-daemon-lifecycle'));
+    expect(ciRecipe.indexOf('$(MAKE) release-daemon-lifecycle')).toBeLessThan(ciRecipe.indexOf('$(MAKE) smoke'));
     const releaseRecipe = makeRecipe(makefile, 'release');
     expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeGreaterThanOrEqual(0);
     expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) smoke'));
-    expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) build-all'));
+    expect(releaseRecipe.indexOf('$(MAKE) acceptance-tui')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) verify-distribution'));
+  });
+
+  it('keeps the distribution contract before the external release verifier', () => {
+    const releaseRecipe = makeRecipe(makefile, 'release');
+    expect(releaseRecipe.indexOf('$(MAKE) test-distribution')).toBeGreaterThanOrEqual(0);
+    expect(releaseRecipe.indexOf('$(MAKE) verify-distribution')).toBeGreaterThanOrEqual(0);
+    expect(releaseRecipe.indexOf('$(MAKE) test-distribution')).toBeLessThan(releaseRecipe.indexOf('$(MAKE) verify-distribution'));
+    const ciRecipe = makeRecipe(makefile, 'ci-test');
+    expect(ciRecipe.indexOf('$(MAKE) test-distribution')).toBeGreaterThanOrEqual(0);
+    expect(ciRecipe.join('\n')).not.toContain('verify-distribution');
+    expect(makefile).toContain('ci-test: ## What CI runs: hermetic mandatory gates in order (external distribution verification is release-only)');
+    expect(makefile).toContain('test-distribution: ## Run the hermetic contract test for the distribution wrapper');
+    expect(makefile).toContain('verify-distribution: build-all');
+    expect(makefile).toContain('bash scripts/verify-distribution.sh');
   });
 });

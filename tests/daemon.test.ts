@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDaemonProjectStatusCache, registerDaemonShutdown } from '../src/daemon.js';
 import { subscribeEvents } from '../src/data/server.js';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -101,3 +106,117 @@ describe('daemon event subscription', () => {
     expect(returnSpy).toHaveBeenCalledOnce();
   });
 });
+
+describe('daemon process lifecycle', () => {
+  let mock: ChildProcess | null = null;
+
+  afterEach(async () => {
+    if (mock) await stopProcess(mock);
+    mock = null;
+  });
+
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    it(`exits cleanly after ${signal}`, async () => {
+      mock = spawn('bun', ['tests/mock/mock-opencode.ts'], {
+        cwd: process.cwd(),
+        env: { ...process.env, MOCK_PORT: '0', MOCK_DELAY_MS: '25', MOCK_LOOP: '1' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      const mockOutput = captureOutput(mock);
+      const mockReady = await waitForOutput(mock, mockOutput.stdout, mockOutput.stderr, /mock-opencode listening on port (\d+)/, 3_000);
+      const home = await mkdtemp(join(tmpdir(), 'ocstatusline-daemon-'));
+      await mkdir(join(home, '.config', 'ocstatusline'), { recursive: true });
+      const port = mockReady[1];
+      let child: ChildProcess | null = null;
+      try {
+        child = spawn('bun', ['src/index.ts', 'start', '--server', `http://127.0.0.1:${port}`], {
+          cwd: process.cwd(),
+          env: { ...process.env, HOME: home, XDG_CONFIG_HOME: `${home}/.config`, COLUMNS: '120' },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        const output = captureOutput(child);
+        await waitForHttp(`http://127.0.0.1:${port}/healthz`, 3_000);
+        await waitForOutput(child, output.stdout, output.stderr, /\x1b\[0J/, 3_000);
+        await delay(100);
+        child.kill(signal);
+        const [exitCode, exitSignal] = await waitForExit(child, 3_000);
+        expect({ exitCode, exitSignal }, `stdout=${output.stdout.join('')}\nstderr=${output.stderr.join('')}`).toEqual({ exitCode: 0, exitSignal: null });
+        expect(child.exitCode).toBe(0);
+      } finally {
+        if (child) await stopProcess(child);
+        await stopProcess(mock);
+        await rm(home, { recursive: true, force: true });
+      }
+    }, 10_000);
+  }
+});
+
+function captureOutput(child: ChildProcess): { stdout: string[]; stderr: string[] } {
+  const output = { stdout: [] as string[], stderr: [] as string[] };
+  child.stdout?.on('data', (chunk: Buffer) => output.stdout.push(chunk.toString()));
+  child.stderr?.on('data', (chunk: Buffer) => output.stderr.push(chunk.toString()));
+  return output;
+}
+
+async function waitForOutput(child: ChildProcess, chunks: string[], errors: string[], pattern: RegExp, timeoutMs: number): Promise<RegExpMatchArray> {
+  const existing = chunks.join('').match(pattern);
+  if (existing) return existing;
+  return new Promise<RegExpMatchArray>((resolve, reject) => {
+    const onData = () => {
+      const match = chunks.join('').match(pattern);
+      if (match) finish(() => resolve(match));
+    };
+    const onExit = () => finish(() => reject(new Error(`process exited before output ${pattern}: stdout=${chunks.join('')} stderr=${errors.join('')}`)));
+    const timer = setTimeout(() => finish(() => reject(new Error(`timed out after ${timeoutMs}ms waiting for output ${pattern}: stdout=${chunks.join('')} stderr=${errors.join('')}`))), timeoutMs);
+    const finish = (done: () => void) => {
+      clearTimeout(timer);
+      child.stdout?.off('data', onData);
+      child.off('close', onExit);
+      done();
+    };
+    child.stdout?.on('data', onData);
+    child.once('close', onExit);
+  });
+}
+
+async function waitForExit(child: ChildProcess, timeoutMs: number): Promise<[number | null, NodeJS.Signals | null]> {
+  if (child.exitCode !== null || child.signalCode !== null) return [child.exitCode, child.signalCode];
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`process did not exit within ${timeoutMs}ms`)), timeoutMs);
+    once(child, 'close').then(([code, signal]) => {
+      clearTimeout(timer);
+      resolve([code as number | null, signal as NodeJS.Signals | null]);
+    });
+  });
+}
+
+async function waitForHttp(url: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url);
+      if (response.ok && (await response.json() as { status?: string }).status === 'ok') return;
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`timed out after ${timeoutMs}ms waiting for ${url}: ${lastError ?? 'HTTP request was not successful'}`);
+}
+
+async function delay(timeoutMs: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, timeoutMs));
+}
+
+async function stopProcess(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.kill('SIGTERM');
+  try {
+    await waitForExit(child, 1_000);
+    return;
+  } catch {
+    child.kill('SIGKILL');
+  }
+  await waitForExit(child, 1_000);
+}

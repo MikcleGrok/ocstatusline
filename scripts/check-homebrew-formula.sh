@@ -25,7 +25,7 @@ for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linu
   build_asset="$root/build/$asset"
   test -s "$build_asset" || { printf 'formula-check blocker: build asset is missing: %s\n' "$asset" >&2; exit 1; }
   built="$(checksum "$build_asset")"
-  test "${built,,}" = "${expected,,}" || { printf 'formula-check blocker: manifest does not match build asset=%s expected=%s actual=%s\n' "$asset" "$expected" "$built" >&2; exit 1; }
+  test "$(printf '%s' "$built" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')" || { printf 'formula-check blocker: manifest does not match build asset=%s expected=%s actual=%s\n' "$asset" "$expected" "$built" >&2; exit 1; }
   formula_hash="$(awk -v name="$asset" '
     /^[[:space:]]*url[[:space:]]+"/ && index($0, "/releases/download/v#{version}/" name "\"") {
       if (getline > 0) {
@@ -37,6 +37,6 @@ for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linu
       exit
     }
   ' "$formula")"
-  test "${formula_hash,,}" = "${expected,,}" || { printf 'formula-check blocker: formula checksum mismatch asset=%s expected=%s actual=%s\n' "$asset" "$expected" "${formula_hash:-missing}" >&2; exit 1; }
+  test "$(printf '%s' "$formula_hash" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')" || { printf 'formula-check blocker: formula checksum mismatch asset=%s expected=%s actual=%s\n' "$asset" "$expected" "${formula_hash:-missing}" >&2; exit 1; }
 done
 printf 'formula-check: tag=%s version=%s all_assets=verified\n' "$tag" "$version"

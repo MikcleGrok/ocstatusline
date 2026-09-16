@@ -32,6 +32,8 @@ export function sseFrame(event: unknown): string {
 
 export function startMock(opts: MockOptions): MockHandle {
   const events = readFixture(opts.fixture);
+  let activeConnections = 0;
+  let totalConnections = 0;
 
   const server = Bun.serve({
     port: opts.port,
@@ -40,7 +42,7 @@ export function startMock(opts: MockOptions): MockHandle {
       const url = new URL(req.url);
 
       if (url.pathname === '/healthz') {
-        return new Response(JSON.stringify({ status: 'ok', events: events.length }), {
+        return new Response(JSON.stringify({ status: 'ok', events: events.length, activeConnections, totalConnections }), {
           headers: { 'content-type': 'application/json' },
         });
       }
@@ -49,7 +51,15 @@ export function startMock(opts: MockOptions): MockHandle {
         return new Response('{}', { headers: { 'content-type': 'application/json' } });
       }
 
-      const stream = new ReadableStream<Uint8Array>({
+       activeConnections++;
+       totalConnections++;
+       let released = false;
+       const release = () => {
+         if (released) return;
+         released = true;
+         activeConnections--;
+       };
+       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
           const encoder = new TextEncoder();
           try {
@@ -58,12 +68,15 @@ export function startMock(opts: MockOptions): MockHandle {
                 controller.enqueue(encoder.encode(sseFrame(event)));
                 if (opts.delayMs > 0) await Bun.sleep(opts.delayMs);
               }
-            } while (opts.loop);
-            controller.close();
-          } catch {
-          }
-        },
-      });
+             } while (opts.loop);
+             controller.close();
+             release();
+           } catch {
+             release();
+           }
+         },
+         cancel: release,
+       });
 
       return new Response(stream, {
         headers: {

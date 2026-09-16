@@ -2,6 +2,8 @@
 .PHONY: help env image install lock typecheck test test-unit test-functional test-acceptance test-all test-watch acceptance-tui sh run config up down clean \
         generate-tui-plugin-assets \
         build build-linux build-all manifest release release-check smoke smoke-cli smoke-daemon smoke-tui smoke-install \
+        release-daemon-lifecycle \
+        test-distribution verify-distribution \
         release-local local-release validate-tag validate-version \
         mock-up mock-down mock-logs mock-check record-fixture check-yoga check-musl probe-targets \
         ci-test ci-down ci-logs sync-upstream sync-verify \
@@ -16,6 +18,10 @@ TEST_RUNTIME ?= bun
 ACCEPTANCE_TUI_TIMEOUT ?= 90s
 ACCEPTANCE_TUI_KILL_AFTER ?= 5s
 MOCK_PORT    ?= 4096
+
+ifeq ($(CI),true)
+MOCK_PORT := 0
+endif
 
 export
 
@@ -49,6 +55,8 @@ HOST_TARGET := bun-linux-arm64
 HOST_TARGET := bun-linux-x64
   endif
 endif
+
+HOST_BINARY := build/ocstatusline-$(patsubst bun-%,%,$(HOST_TARGET))
 
 GIT_COMMON_DIR := $(abspath $(shell git rev-parse --git-common-dir))
 GIT_DIR := $(abspath $(shell git rev-parse --git-dir))
@@ -188,6 +196,13 @@ probe-targets: image ## Probe which bun --compile targets this pinned Bun actual
 manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
 	$(DC) run --rm --no-deps builder bash -lc 'cd /out && sha256sum ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64 > SHA256SUMS && cat SHA256SUMS'
 
+test-distribution: ## Run the hermetic contract test for the distribution wrapper
+	bash tests/verify-distribution.sh
+
+verify-distribution: build-all ## Release-only gate: build assets, write the manifest and run the canonical external distribution verifier
+	$(MAKE) manifest
+	bash scripts/verify-distribution.sh
+
 check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
 	HOMEBREW_TAP_DIR="$${HOMEBREW_TAP_DIR:-$(CURDIR)/../homebrew-mikclegrok-tools}" bash scripts/check-homebrew-formula.sh "$${TAG:-}"
 
@@ -215,6 +230,16 @@ smoke-tui: build-linux ## Smoke: config TUI of compiled binary under pty
 
 smoke-install: build-linux ## Smoke: `install` from the binary alone writes the embedded plugin into a fake HOME
 	$(DC) run --rm --no-deps -e BIN=/out/$(LINUX_BIN) smoke bash /smoke/smoke-install.sh
+
+release-daemon-lifecycle: build-all ## Compiled lifecycle gate: run the current-platform binary through both signal shutdown paths
+	set -e; \
+	cleanup() { $(MAKE) mock-down || true; }; \
+	trap cleanup EXIT; \
+	MOCK_PORT=$(if $(filter true,$(CI)),0,$(MOCK_PORT)); export MOCK_PORT; \
+	$(MAKE) mock-up; \
+	mapped="$$($(DC) port mock-opencode 4096)"; \
+	port="$${mapped##*:}"; \
+	BIN="$(CURDIR)/$(HOST_BINARY)" SERVER="http://127.0.0.1:$$port" bash tests/release-daemon-lifecycle.sh
 
 # ==============================================================================
 # Mock server (fixture playback instead of a live `opencode serve`)
@@ -247,8 +272,9 @@ release: validate-version env ## Full release build: deps, gates, tests, smoke, 
 	$(MAKE) test-unit
 	$(MAKE) test-functional
 	$(MAKE) smoke
-	$(MAKE) build-all
-	$(MAKE) manifest
+	$(MAKE) test-distribution
+	$(MAKE) verify-distribution
+	$(MAKE) release-daemon-lifecycle
 	@echo ">> release artifacts for $(VERSION):"
 	@ls -l build/
 
@@ -271,7 +297,17 @@ release-check: validate-tag ## Validate a planned release without creating a tag
 # CI helpers
 # ==============================================================================
 
-ci-test: image install typecheck test-unit test-functional acceptance-tui smoke ## What CI runs: all mandatory gates in order
+ci-test: ## What CI runs: hermetic mandatory gates in order (external distribution verification is release-only)
+	$(MAKE) image
+	$(MAKE) install
+	$(MAKE) typecheck
+	$(MAKE) test-unit
+	$(MAKE) test-functional
+	$(MAKE) acceptance-tui
+	$(MAKE) build-all
+	$(MAKE) release-daemon-lifecycle
+	$(MAKE) smoke
+	$(MAKE) test-distribution
 
 ci-down: ## CI tear-down: stop stack, keep volumes for inspection
 	$(DC) down --remove-orphans

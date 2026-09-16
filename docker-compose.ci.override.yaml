@@ -26,6 +26,8 @@ services:
 
   mock-opencode:
     container_name: ocstatusline-mock-opencode-${CI_JOB_ID}
+    ports:
+      - "${MOCK_PORT:-0}:4096"
     networks:
       - common
     volumes:

@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir, homedir } from 'node:os';
 import { dirname, join, posix } from 'node:path';
 import { builtinModules } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   collectPluginAssetsFromDisk,
   isRepoCheckoutNotFoundError,
@@ -51,6 +51,21 @@ const EMBEDDED_SOURCE: EmbeddedPluginSource = { assets: PLUGIN_ASSET_FILES, depe
 // The embedded (standalone-binary) counterpart of install().
 function installEmbedded(options: Partial<TuiInstallOptions> = {}) {
   return runTuiInstall({ configDir, skipNpmInstall: true, embedded: EMBEDDED_SOURCE, ...options });
+}
+
+function installRuntimeStubs(): void {
+  const writePackage = (name: string, files: Record<string, string>): void => {
+    const packageDir = join(configDir, 'node_modules', ...name.split('/'));
+    mkdirSync(packageDir, { recursive: true });
+    const exports = Object.fromEntries(Object.keys(files).map((file) => [file === 'index.js' ? '.' : `./${file}`, `./${file}`]));
+    if (name === '@opentui/solid') exports['./jsx-runtime'] = './jsx-runtime.js';
+    writeFileSync(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', type: 'module', exports }));
+    for (const [file, content] of Object.entries(files)) writeFileSync(join(packageDir, file), content);
+  };
+
+  writePackage('solid-js', { 'index.js': 'export function createSignal(initial) { let value = initial; return [() => value, (next) => { value = typeof next === "function" ? next(value) : next; }]; }\n' });
+  writePackage('@opentui/core', { 'index.js': 'export const RGBA = { fromIndex: (index) => index };\n' });
+  writePackage('@opentui/solid', { 'jsx-runtime.js': 'export function jsx(type, props) { return { type, props }; }\n' });
 }
 
 describe('runTuiInstall file copy', () => {
@@ -366,6 +381,51 @@ describe('resolveConfigDir', () => {
 const CLOSURE_RELATIVE_PATHS = ['src/tui/footer.ts', 'src/tui/openrouter-subprocess.ts', 'src/data/git.ts', 'src/data/openrouter-weekly.ts', 'src/data/project-status.ts', 'src/types/index.ts', 'src/utils/config.ts'];
 
 describe('runTuiInstall embedded (standalone-binary) mode', () => {
+  it('imports the installed entrypoint and registers the TUI hooks with local runtime stubs', async () => {
+    await installEmbedded();
+    installRuntimeStubs();
+
+    const registrations: Array<{ order: number; slots: Record<string, unknown> }> = [];
+    const cleanups: Array<() => void> = [];
+    const api = {
+      route: { current: { name: 'home', params: {} } },
+      state: { path: {}, session: { get: () => undefined }, provider: [] },
+      client: {},
+      event: { on: () => { const cleanup = () => {}; cleanups.push(cleanup); return cleanup; } },
+      lifecycle: { onDispose: (cleanup: () => void) => cleanups.push(cleanup) },
+      slots: { register: (registration: { order: number; slots: Record<string, unknown> }) => registrations.push(registration) },
+    };
+
+    const originalHome = process.env.HOME;
+    const originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    const isolatedHome = mkdtempSync(join(tmpdir(), 'ocsl-runtime-home-'));
+
+    try {
+      process.env.HOME = isolatedHome;
+      process.env.XDG_CONFIG_HOME = join(isolatedHome, '.config');
+      mkdirSync(join(isolatedHome, '.config', 'ocstatusline'), { recursive: true });
+      writeFileSync(join(isolatedHome, '.config', 'ocstatusline', 'settings.json'), JSON.stringify({ openrouter: { enabled: false } }));
+
+      const installed = await import(`${pathToFileURL(join(configDir, 'tui-plugins/ocstatusline.ts')).href}?runtime-test`);
+      const plugin = installed.default as { id: string; tui: (api: unknown) => Promise<void> };
+      expect(plugin.id).toBe('ocstatusline');
+      expect(plugin.tui).toBeTypeOf('function');
+      await plugin.tui(api);
+      expect(registrations.map(({ order, slots }) => ({ order, hooks: Object.keys(slots) }))).toEqual([
+        { order: 100, hooks: ['app_bottom'] },
+        { order: 50, hooks: ['home_footer'] },
+      ]);
+      expect(registrations.every(({ slots }) => Object.values(slots).every((hook) => typeof hook === 'function'))).toBe(true);
+    } finally {
+      cleanups.forEach((cleanup) => cleanup());
+      if (originalHome === undefined) delete process.env.HOME;
+      else process.env.HOME = originalHome;
+      if (originalXdgConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = originalXdgConfigHome;
+      rmSync(isolatedHome, { recursive: true, force: true });
+    }
+  });
+
   it('writes the same file closure as the disk mode, without any repo checkout', async () => {
     const result = await installEmbedded();
 
