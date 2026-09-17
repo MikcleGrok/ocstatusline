@@ -14,19 +14,19 @@ class Ocstatusline < Formula
   version "1.2.3"
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-arm64"
+      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v1.2.3/ocstatusline-darwin-arm64"
       sha256 "HASH_DARWIN_ARM64"
     else
-      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-darwin-x64"
+      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v1.2.3/ocstatusline-darwin-x64"
       sha256 "HASH_DARWIN_X64"
     end
   end
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-arm64"
+      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v1.2.3/ocstatusline-linux-arm64"
       sha256 "HASH_LINUX_ARM64"
     else
-      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/ocstatusline-linux-x64"
+      url "https://github.com/MikcleGrok/ocstatusline/releases/download/v1.2.3/ocstatusline-linux-x64"
       sha256 "HASH_LINUX_X64"
     end
   end

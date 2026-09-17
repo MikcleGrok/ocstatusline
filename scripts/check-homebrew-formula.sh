@@ -26,7 +26,7 @@ elif command -v shasum >/dev/null 2>&1; then checksum() { shasum -a 256 "$1" | a
 else printf '%s\n' 'formula-check blocker: neither sha256sum nor shasum is available' >&2; exit 1; fi
 
 for asset in ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64; do
-  url="https://github.com/MikcleGrok/ocstatusline/releases/download/v#{version}/$asset"
+  url="https://github.com/MikcleGrok/ocstatusline/releases/download/v${version}/$asset"
   pair="$(awk -v target="$url" '
     /^[[:space:]]*url[[:space:]]+"[^"]+"[[:space:]]*$/ {
       line = $0
