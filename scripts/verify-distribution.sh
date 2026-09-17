@@ -1,45 +1,63 @@
 #!/usr/bin/env bash
 set -euo pipefail
-tag=${TAG:-}
+
+root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
+manifest="$root/build/SHA256SUMS"
+tag="${TAG:-$(git -C "$root" describe --tags --exact-match 2>/dev/null || true)}"
 tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
-if [ -n "$tag" ] && ! [[ "$tag" =~ $tag_pattern ]]; then
-  printf '%s\n' 'ERROR: TAG must be a safe SemVer vMAJOR.MINOR.PATCH' >&2
-  exit 1
-fi
-safe_args=()
-tag_arg_set=false
+assets=(ocstatusline-darwin-arm64 ocstatusline-darwin-x64 ocstatusline-linux-arm64 ocstatusline-linux-x64)
+requested_version=""
+requested_tag=""
+
 while test "$#" -gt 0; do
   case "$1" in
-    --tag|--version|--format|--output)
-      test "$#" -ge 2 || { printf '%s\n' "$1 requires a value" >&2; exit 2; }
-      if [ "$1" = --tag ]; then
-        [[ "$2" =~ $tag_pattern ]] || { printf '%s\n' "ERROR: $1 must be a safe SemVer vMAJOR.MINOR.PATCH" >&2; exit 1; }
-      elif [ "$1" = --version ]; then
-        [[ "$2" =~ $version_pattern ]] || { printf '%s\n' "ERROR: $1 must be a safe SemVer MAJOR.MINOR.PATCH without a v prefix" >&2; exit 1; }
-      fi
-      [ "$1" = --tag ] && tag_arg_set=true
-      safe_args+=("$1" "$2"); shift 2;;
-    --check|--help|-h) safe_args+=("$1"); shift;;
-    *) printf 'ERROR: unsupported wrapper argument: %s\n' "$1" >&2; exit 2;;
+    --check) shift ;;
+    --tag|--version)
+      test "$#" -ge 2 || { printf 'ERROR: %s requires a value\n' "$1" >&2; exit 2; }
+      if [ "$1" = --tag ]; then requested_tag="$2"; else requested_version="$2"; fi
+      shift 2
+      ;;
+    *) printf 'ERROR: unsupported wrapper argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
-if [ -n "$tag" ] && ! $tag_arg_set; then
-  safe_args+=(--tag "$tag")
+
+test -n "$tag" && [[ "$tag" =~ $tag_pattern ]] || { printf 'ERROR: TAG must be a safe SemVer vMAJOR.MINOR.PATCH\n' >&2; exit 1; }
+if [ -n "$requested_tag" ]; then
+  [[ "$requested_tag" =~ $tag_pattern ]] || { printf 'ERROR: --tag must be a safe SemVer vMAJOR.MINOR.PATCH\n' >&2; exit 1; }
+  test "$requested_tag" = "$tag" || { printf 'ERROR: --tag does not match TAG: expected=%s actual=%s\n' "$tag" "$requested_tag" >&2; exit 1; }
 fi
-root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
-guide_tools_root=${GUIDE_TOOLS_ROOT:-$root/../guide-tools}
-tap_dir=${HOMEBREW_TAP_DIR:-$root/../homebrew-mikclegrok-tools}
-verifier="$guide_tools_root/bin/guide-distribution-verify"
-formula="$tap_dir/Formula/ocstatusline.rb"
-if [ ! -x "$verifier" ]; then
-  printf 'distribution gate blocker: guide-distribution-verify is unavailable: %s\n' "$verifier" >&2
-  printf 'set GUIDE_TOOLS_ROOT to a checkout containing the canonical verifier\n' >&2
-  exit 1
+version="${tag#v}"
+if [ -n "$requested_version" ]; then
+  [[ "$requested_version" =~ $version_pattern ]] || { printf 'ERROR: --version must be a safe SemVer MAJOR.MINOR.PATCH without a v prefix\n' >&2; exit 1; }
+  test "$requested_version" = "$version" || { printf 'ERROR: --version does not match tag: expected=%s actual=%s\n' "$version" "$requested_version" >&2; exit 1; }
 fi
-if [ ! -s "$formula" ]; then
-  printf 'distribution gate blocker: canonical Homebrew tap formula is unavailable: %s\n' "$formula" >&2
-  printf 'set HOMEBREW_TAP_DIR to the checked-out homebrew-mikclegrok-tools tap\n' >&2
-  exit 1
-fi
-exec "$verifier" "${safe_args[@]}" --profile prebuilt --root "$root" --formula "$formula" --source-url https://github.com/MikcleGrok/ocstatusline --manifest "$root/build/SHA256SUMS" --assets ocstatusline-darwin-arm64,ocstatusline-darwin-x64,ocstatusline-linux-arm64,ocstatusline-linux-x64
+
+test -s "$manifest" || { printf 'distribution gate blocker: checksum manifest is unavailable: %s\n' "$manifest" >&2; exit 1; }
+manifest_valid="$(awk '
+  NF != 2 || $1 !~ /^[0-9A-Fa-f]{64}$/ || $2 !~ /^ocstatusline-(darwin-arm64|darwin-x64|linux-arm64|linux-x64)$/ { bad = 1 }
+  { count++ }
+  END { print (!bad && count == 4) ? "yes" : "no" }
+' "$manifest")"
+test "$manifest_valid" = yes || { printf '%s\n' 'distribution gate blocker: manifest must contain exactly four valid asset checksums' >&2; exit 1; }
+
+for asset in "${assets[@]}"; do
+  manifest_count="$(awk -v name="$asset" '$2 == name { count++ } END { print count + 0 }' "$manifest")"
+  test "$manifest_count" = 1 || { printf 'distribution gate blocker: manifest must contain one checksum for %s\n' "$asset" >&2; exit 1; }
+done
+
+checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}';
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}';
+  else printf '%s\n' 'distribution gate blocker: neither sha256sum nor shasum is available' >&2; exit 1; fi
+}
+
+for asset in "${assets[@]}"; do
+  build_asset="$root/build/$asset"
+  test -x "$build_asset" || { printf 'distribution gate blocker: missing or non-executable asset: %s\n' "$asset" >&2; exit 1; }
+  expected="$(awk -v name="$asset" '$2 == name { print $1 }' "$manifest")"
+  [[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]] || { printf 'distribution gate blocker: missing checksum for %s\n' "$asset" >&2; exit 1; }
+  actual="$(checksum "$build_asset")"
+  test "$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')" || { printf 'distribution gate blocker: manifest checksum mismatch for %s\n' "$asset" >&2; exit 1; }
+done
+printf 'distribution-check: tag=%s version=%s all_assets=verified\n' "$tag" "$version"

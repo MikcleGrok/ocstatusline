@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      CI: true
+      CI_JOB_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Validate release ref
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          test "$REF_TYPE" = tag
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build and verify release
+        run: make release
+      - name: Verify exact release version
+        run: test "$(./build/ocstatusline-linux-x64 --version)" = "$GITHUB_REF_NAME"
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber \
+            build/ocstatusline-darwin-arm64 build/ocstatusline-darwin-x64 \
+            build/ocstatusline-linux-arm64 build/ocstatusline-linux-x64 build/SHA256SUMS
+      - name: Collect container logs
+        if: always()
+        run: make ci-logs || true
+      - name: Tear down containers
+        if: always()
+        run: make ci-down || true

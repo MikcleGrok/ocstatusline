@@ -2,7 +2,8 @@
 
 The production Formula lives in the canonical tap repository
 `homebrew-mikclegrok-tools/Formula/ocstatusline.rb`. The source repository
-only owns release assets; it does not expose a second installable Formula.
+owns the version tag and GitHub Release assets; it does not expose a second
+installable Formula.
 
 > The canonical tap is `mikclegrok/tools`, shared by all product formulae.
 
@@ -16,9 +17,9 @@ brew install mikclegrok/tools/ocstatusline
 ocstatusline --version   # → v0.2.10 (published release)
 ```
 
-`brew update && brew upgrade` then picks up subsequent releases — Homebrew
-sees the Formula live in the same GitHub repo the release comes from, so
-the canonical tap tracks the published formula and release assets.
+`brew update && brew upgrade` then picks up subsequent releases. The Formula
+is updated separately in the tap after the source repository GitHub Release is
+published.
 
 ---
 
@@ -31,8 +32,13 @@ do not add a second stable tap or rely on a short formula name:
 HOMEBREW_TAP_DIR=/path/to/homebrew-mikclegrok-tools make check-homebrew-formula TAG=v<version>
 ```
 
-When the next release ships, retap `MikcleGrok/tools` from its canonical remote
-before installing the published formula.
+`make release` не требует tap checkout и не проверяет Formula: source Release
+публикуется первым. `make check-homebrew-formula` является отдельным tap gate и
+отказывается работать без явно заданного `HOMEBREW_TAP_DIR`.
+
+When the next release ships, update the Formula in `MikcleGrok/tools` from the
+source repository release, then retap from its canonical remote before
+installing the published formula.
 
 ---
 

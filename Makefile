@@ -199,12 +199,13 @@ manifest: ## Write build/SHA256SUMS over every artifact currently in ./build
 test-distribution: ## Run the hermetic contract test for the distribution wrapper
 	bash tests/verify-distribution.sh
 
-verify-distribution: build-all ## Release-only gate: build assets, write the manifest and run the canonical external distribution verifier
+verify-distribution: build-all ## Release-only gate: build assets, write the manifest and verify source-release artifacts
 	$(MAKE) manifest
 	bash scripts/verify-distribution.sh
 
 check-homebrew-formula: ## Verify formula version and every prebuilt asset checksum
-	HOMEBREW_TAP_DIR="$${HOMEBREW_TAP_DIR:-$(CURDIR)/../homebrew-mikclegrok-tools}" bash scripts/check-homebrew-formula.sh "$${TAG:-}"
+	test -n "$${HOMEBREW_TAP_DIR:-}" || { echo "ERROR: HOMEBREW_TAP_DIR must explicitly point to the tap checkout" >&2; exit 2; }
+	HOMEBREW_TAP_DIR="$${HOMEBREW_TAP_DIR}" bash scripts/check-homebrew-formula.sh "$${TAG:-}"
 
 check-musl: build-linux ## Answer "are -musl targets needed": run the glibc binary on Alpine
 	docker run --rm -v "$(CURDIR)/build:/out:ro" alpine:3.20 /out/$(LINUX_BIN) --version

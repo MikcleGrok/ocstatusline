@@ -471,6 +471,7 @@ Inspired by and modeled after [ccstatusline](https://github.com/sirmalloc/ccstat
 ## License
 
 [MIT](./LICENSE)
-Prebuilt Homebrew assets и `SHA256SUMS` проверяются через
-`scripts/check-homebrew-formula.sh` и общий verifier из `guide-tools`; внешний tap не
-изменяется автоматически.
+Prebuilt assets и `SHA256SUMS` проверяются локальными gates
+`scripts/verify-distribution.sh` и `scripts/check-homebrew-formula.sh`. GitHub Release
+создаётся в `MikcleGrok/ocstatusline`; затем Formula в tap `MikcleGrok/tools`
+обновляется отдельным изменением и не публикуется автоматически из этого репозитория.
